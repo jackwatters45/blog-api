@@ -4,11 +4,11 @@ export interface IUser extends Document {
 	_id: Types.ObjectId;
 	firstName: string;
 	lastName: string;
-  fullName: string;
+	fullName: string;
 	email: string;
 	password: string;
 	createdAt: Date;
-  updatedAt: Date;
+	updatedAt: Date;
 	userType: string;
 	posts?: Types.Array<Types.ObjectId>;
 }
@@ -26,7 +26,7 @@ const userSchema = new Schema<IUser>(
 );
 
 userSchema.virtual("fullName").get(function (this: IUser) {
-  return `${this.firstName} ${this.lastName}`;
+	return `${this.firstName} ${this.lastName}`;
 });
 
 export default model<IUser>("User", userSchema);
