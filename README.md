@@ -1,3 +1,1 @@
 # blog-api
-
-routes
