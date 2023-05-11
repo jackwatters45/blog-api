@@ -3,11 +3,11 @@ import dotenv from "dotenv";
 import express from "express";
 
 // Internal dependencies
-import configDb from "./config/database";
-import routes from "./routes";
 import configAuthMiddleware from "./middleware/authConfig";
-import configProdMiddleware from "./middleware/prodConfig";
 import configOtherMiddleware from "./middleware/otherConfig";
+import configProdMiddleware from "./middleware/prodConfig";
+import configDb from "./config/database";
+import configRoutes from "./routes";
 import configErrorMiddleware from "./middleware/errorConfig";
 
 dotenv.config();
@@ -20,10 +20,8 @@ configOtherMiddleware(app);
 configProdMiddleware(app);
 configDb();
 
-// Routes
-app.use("/users", routes.user);
-app.use("/posts", routes.post);
-app.use("/comments", routes.comment);
+// Config Routes
+configRoutes(app);
 
 // config error middleware
 configErrorMiddleware(app);

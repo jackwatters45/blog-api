@@ -70,48 +70,6 @@ const sampleComments: Partial<IComment>[] = [
 	},
 ];
 
-async function populateDbOld() {
-	try {
-		await User.deleteMany({});
-		await Post.deleteMany({});
-		await Comment.deleteMany({});
-
-		const users = sampleUsers.map(async (userData) => {
-			const user = new User(userData);
-			await user.save();
-			return user;
-		});
-
-		const comments = sampleComments.map(async (commentData, index) => {
-			const comment = new Comment({ ...commentData, author: users[index] });
-			await comment.save();
-			return comment;
-		});
-
-		const posts = samplePosts.map(async (postData, index) => {
-			const post = new Post({
-				...postData,
-				author: users[index],
-				comments: [comments[index]],
-			});
-			await post.save();
-			return post;
-		});
-
-		console.log("Created users: ", users);
-		console.log("Created comments: ", comments);
-		console.log("Created posts: ", posts);
-
-		console.log("Database populated successfully.");
-		process.exit(0);
-	} catch (error) {
-		console.error("Error populating the database: ", error);
-		process.exit(1);
-	}
-}
-
-// populateDbOld();
-
 async function populateDb() {
 	try {
 		await User.deleteMany({});

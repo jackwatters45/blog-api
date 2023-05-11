@@ -11,13 +11,13 @@
 		"build:sass": "node-sass src/public/styles -o dist/public/styles",
 		"build": "rimraf dist && tsc -p src & npm run build:assets",
 		"start": "node dist/index.js",
-		"dev:scss": "node-sass --watch src/public/styles -o src/public/styles",
 		"dev": "nodemon src/index.ts",
-		"serverstart": "DEBUG=express-members-only:* & npm run dev & npm run dev:scss",
+		"serverstart": "DEBUG=express-members-only:* & npm run dev",
 		"lint:fix": "eslint . --fix",
 		"format": "prettier --write .",
 		"fix": "npm run format & npm run lint:fix",
-		"prepare": "husky install"
+		"prepare": "husky install",
+		"populate": "ts-node src/tools/populateDatabase"
 	},
 	"lint-staged": {
 		"*.ts": [

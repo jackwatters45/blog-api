@@ -1,6 +1,5 @@
 import { Schema, model, Types, Document } from "mongoose";
 import { IUser } from "./user";
-import { IComment } from "./comment";
 
 export interface IPost extends Document {
 	_id: Types.ObjectId;
@@ -11,7 +10,8 @@ export interface IPost extends Document {
 	updatedAt: Date;
 	published: boolean;
 	tags?: Types.Array<string>;
-	comments?: Types.Array<Types.ObjectId | IComment>;
+	comments?: Types.Array<Types.ObjectId>;
+	likes?: Types.Array<Types.ObjectId>;
 }
 
 const postSchema = new Schema<IPost>(
@@ -22,6 +22,7 @@ const postSchema = new Schema<IPost>(
 		published: { type: Boolean, required: true, default: false },
 		tags: [{ type: String, trim: true }],
 		comments: [{ type: Types.ObjectId, ref: "Comment" }],
+		likes: [{ type: Types.ObjectId, ref: "User" }],
 	},
 	{ timestamps: true },
 );

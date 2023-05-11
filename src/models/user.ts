@@ -11,6 +11,7 @@ export interface IUser extends Document {
 	updatedAt: Date;
 	userType: string;
 	posts?: Types.Array<Types.ObjectId>;
+	comments?: Types.Array<Types.ObjectId>;
 }
 
 const userSchema = new Schema<IUser>(
@@ -21,6 +22,7 @@ const userSchema = new Schema<IUser>(
 		password: { type: String, required: true, trim: true, minlength: 8 },
 		userType: { type: String, required: true, trim: true, default: "user" },
 		posts: [{ type: Types.ObjectId, ref: "Post" }],
+		comments: [{ type: Types.ObjectId, ref: "Comment" }],
 	},
 	{ timestamps: true },
 );

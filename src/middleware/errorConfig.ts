@@ -19,7 +19,7 @@ const configErrorMiddleware = (app: Application) => {
 		res: Response,
 	) => {
 		// set locals, only providing error in development
-		res.locals.message = err.message;
+		res.locals.message = err.message ?? "Internal Server Error";
 		res.locals.error = req.app.get("env") === "development" ? err : {};
 
 		// render the error page
