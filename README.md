@@ -7,8 +7,13 @@
 
 ## TODO
 
-- test rest of routes
 - auth stuff
+- test rest of routes
+- add auth to routes that need it
+
 - connect posts to user etc
+- add url to posts and users
 - probably add username or something for userUrl
+- change base url insomnia
+
 - implement user routes in frontend / login / register
