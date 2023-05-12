@@ -1,8 +1,9 @@
 import express from "express";
+import { getComments } from "../controllers/comment.controller";
 
 const router = express.Router();
 
-router.get("/");
+router.get("/", getComments);
 
 router.post("/");
 

@@ -1,4 +1,6 @@
 import { Schema, model, Types, Document } from "mongoose";
+import { IPost } from "./post";
+import { IComment } from "./comment";
 
 export interface IUser extends Document {
 	_id: Types.ObjectId;
@@ -10,8 +12,8 @@ export interface IUser extends Document {
 	createdAt: Date;
 	updatedAt: Date;
 	userType: string;
-	posts?: Types.Array<Types.ObjectId>;
-	comments?: Types.Array<Types.ObjectId>;
+	posts?: Types.Array<Types.ObjectId | IPost>;
+	comments?: Types.Array<Types.ObjectId | IComment>;
 }
 
 const userSchema = new Schema<IUser>(

@@ -12,9 +12,13 @@ export const getPosts = expressAsyncHandler(
 	async (req: Request, res: Response) => {
 		try {
 			const posts = await Post.find({ published: true })
-				.populate("author", "username")
-				.populate("comments", "content")
-				.populate("likes", "username");
+				.populate("author", "firstName lastName")
+				.populate("likes", "email")
+				.populate({
+					path: "comments",
+					select: "content",
+					populate: { path: "author", select: "firstName lastName" },
+				});
 			res.json(posts);
 		} catch (error) {
 			res.status(500).json({ message: error.message });
@@ -29,9 +33,13 @@ export const getPostById = expressAsyncHandler(
 	async (req: Request, res: Response) => {
 		try {
 			const post = await Post.findById(req.params.id)
-				.populate("author", "username")
-				.populate("comments", "content")
-				.populate("likes", "username");
+				.populate("author", "firstName lastName")
+				.populate("likes", "email")
+				.populate({
+					path: "comments",
+					select: "content",
+					populate: { path: "author", select: "firstName lastName" },
+				});
 			res.json(post);
 		} catch (error) {
 			res.status(500).json({ message: error.message });
@@ -42,6 +50,8 @@ export const getPostById = expressAsyncHandler(
 // @desc    Create post
 // @route   POST /posts
 // @access  Private
+// TODO change content length to 100
+// TODO add author once authentication is implemented
 export const createPost = [
 	body("title")
 		.trim()
@@ -49,23 +59,32 @@ export const createPost = [
 		.withMessage("Title must be at least 5 characters long"),
 	body("content")
 		.trim()
-		.isLength({ min: 100 })
+		.isLength({ min: 10 })
 		.withMessage("Content must be at least 100 characters long"),
 	body("tags").optional().isArray().withMessage("Tags must be an array"),
-
+	body("author")
+		.optional()
+		.isMongoId()
+		.withMessage("Author must be a valid ID"),
+	body("published")
+		.optional()
+		.isBoolean()
+		.withMessage("Published must be a boolean"),
 	expressAsyncHandler(async (req: Request, res: Response): Promise<any> => {
 		const errors = validationResult(req);
 		if (!errors.isEmpty()) {
 			return res.status(400).json({ errors: errors.array() });
 		}
 
-		const { title, content, tags } = req.body;
+		const { title, content, tags, author, published } = req.body;
 
 		try {
 			const post = new Post({
 				title,
 				content,
 				tags,
+				author,
+				published,
 			});
 			await post.save();
 			res.status(201).json(post);
@@ -80,20 +99,30 @@ export const createPost = [
 // @access  Private
 export const updatePost = [
 	body("title")
+		.optional()
 		.trim()
 		.isLength({ min: 5 })
 		.withMessage("Title must be at least 5 characters long"),
 	body("content")
+		.optional()
 		.trim()
 		.isLength({ min: 100 })
 		.withMessage("Content must be at least 100 characters long"),
 	body("tags").optional().isArray().withMessage("Tags must be an array"),
+	body("author")
+		.optional()
+		.isMongoId()
+		.withMessage("Author must be a valid ID"),
+	body("published")
+		.optional()
+		.isBoolean()
+		.withMessage("Published must be a boolean"),
 	expressAsyncHandler(async (req: Request, res: Response): Promise<any> => {
 		const errors = validationResult(req);
 		if (!errors.isEmpty()) {
 			return res.status(400).json({ errors: errors.array() });
 		}
-		const { title, content, tags } = req.body;
+		const { title, content, tags, author, published } = req.body;
 		try {
 			const post = await Post.findByIdAndUpdate(
 				req.params.id,
@@ -101,6 +130,8 @@ export const updatePost = [
 					title,
 					content,
 					tags,
+					author,
+					published,
 				},
 				{ new: true },
 			);
@@ -115,9 +146,14 @@ export const updatePost = [
 // @route   DELETE /posts/:id
 // @access  Private
 export const deletePost = expressAsyncHandler(
-	async (req: Request, res: Response) => {
+	async (req: Request, res: Response): Promise<any> => {
 		try {
 			const post = await Post.findByIdAndDelete(req.params.id);
+
+			if (!post) {
+				return res.status(404).json({ message: "Post not found" });
+			}
+
 			res.json(post);
 		} catch (error) {
 			res.status(500).json({ message: error.message });

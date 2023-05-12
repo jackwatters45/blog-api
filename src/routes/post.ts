@@ -1,23 +1,35 @@
 import express from "express";
+import {
+	createPost,
+	deletePost,
+	getPostById,
+	getPosts,
+	likePost,
+	unlikePost,
+	updatePost,
+} from "../controllers/post.controller";
 
 const router = express.Router();
 
 // /posts
-router.get("/");
+router.get("/", getPosts);
 
 // /posts/:id
-router.get("/:id");
+router.get("/:id", getPostById);
 
 // /posts/:id
-router.post("/:id");
+router.post("/", createPost);
 
 // /posts/:id
-router.put("/:id");
+router.put("/:id", updatePost);
 
 // /posts/:id
-router.delete("/:id");
+router.delete("/:id", deletePost);
 
 // /posts/:id/like
-router.post("/:id/like");
+router.post("/:id/like", likePost);
+
+// /posts/:id/unlike
+router.post("/:id/unlike", unlikePost);
 
 export default router;

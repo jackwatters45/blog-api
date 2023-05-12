@@ -3,7 +3,6 @@ import { body, validationResult } from "express-validator";
 import { Request, Response } from "express";
 import User, { IUser } from "../models/user";
 import expressAsyncHandler from "express-async-handler";
-import exp from "constants";
 
 // @desc    Get all users
 // @route   GET /users
