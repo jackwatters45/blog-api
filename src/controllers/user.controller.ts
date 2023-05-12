@@ -3,6 +3,8 @@ import { body, validationResult } from "express-validator";
 import { Request, Response } from "express";
 import User, { IUser } from "../models/user.model";
 import expressAsyncHandler from "express-async-handler";
+import Post from "../models/post.model";
+import Comment from "../models/comment.model";
 
 // @desc    Get all users
 // @route   GET /users
@@ -24,8 +26,13 @@ export const getUsers = expressAsyncHandler(
 export const getUserById = expressAsyncHandler(
 	async (req: Request, res: Response) => {
 		try {
-			const user = await User.findById(req.params.id);
-			res.json(user);
+			const [user, posts, comments] = await Promise.all([
+				User.findById(req.params.id),
+				Post.find({ published: true, author: req.params.id }),
+				Comment.find({ author: req.params.id }),
+			]);
+
+			res.json({ user, posts, comments });
 		} catch (error) {
 			res.status(500).json({ message: error.message });
 		}
@@ -143,7 +150,7 @@ export const deleteUser = expressAsyncHandler(
 // @desc    Search users by specific field
 // @route   GET /users/search?field=value
 // @access  Public
-// TOFO implement search
+// TODO implement search
 export const searchUsers = expressAsyncHandler(
 	async (req: Request, res: Response): Promise<any> => {
 		try {

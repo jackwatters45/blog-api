@@ -7,8 +7,7 @@
 
 ## TODO
 
-- add url to posts and users
-- connect posts to user etc
+- update populate
 
 - auth stuff
 - search route
