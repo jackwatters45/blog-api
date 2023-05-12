@@ -1,7 +1,7 @@
 import dotenv from "dotenv";
-import User, { IUser } from "../models/user";
-import Post, { IPost } from "../models/post";
-import Comment, { IComment } from "../models/comment";
+import User, { IUser } from "../models/user.model";
+import Post, { IPost } from "../models/post.model";
+import Comment, { IComment } from "../models/comment.model";
 import configDb from "../config/database";
 
 dotenv.config();

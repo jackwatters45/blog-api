@@ -1,6 +1,6 @@
 import { Schema, model, Types, Document } from "mongoose";
-import { IPost } from "./post";
-import { IComment } from "./comment";
+import { IPost } from "./post.model";
+import { IComment } from "./comment.model";
 
 export interface IUser extends Document {
 	_id: Types.ObjectId;

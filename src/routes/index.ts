@@ -1,7 +1,7 @@
 import type { Application } from "express";
-import comment from "./comment";
-import post from "./post";
-import user from "./user";
+import comment from "./comment.router";
+import post from "./post.router";
+import user from "./user.router";
 
 const API_VERSION = "/api/v1";
 

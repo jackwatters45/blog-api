@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { body, validationResult } from "express-validator";
 import { Request, Response } from "express";
-import User, { IUser } from "../models/user";
+import User, { IUser } from "../models/user.model";
 import expressAsyncHandler from "express-async-handler";
 
 // @desc    Get all users

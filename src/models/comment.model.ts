@@ -1,5 +1,5 @@
 import { Schema, model, Types, Document } from "mongoose";
-import { IUser } from "./user";
+import { IUser } from "./user.model";
 
 export interface IComment extends Document {
 	_id: Types.ObjectId;

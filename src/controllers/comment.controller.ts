@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { body, validationResult } from "express-validator";
 import { Request, Response } from "express";
-import Comment from "../models/comment";
+import Comment from "../models/comment.model";
 import expressAsyncHandler from "express-async-handler";
 
 // @desc    Get all comments

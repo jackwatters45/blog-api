@@ -1,7 +1,7 @@
 import passport from "passport";
 import passportLocal from "passport-local";
 import { Request, Response, NextFunction, Application } from "express";
-import User from "../models/user";
+import User from "../models/user.model";
 import bcrypt from "bcryptjs";
 import session from "express-session";
 

@@ -1,8 +1,8 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { body, validationResult } from "express-validator";
 import { Request, Response } from "express";
-import Post from "../models/post";
-import { IUser } from "../models/user";
+import Post from "../models/post.model";
+import { IUser } from "../models/user.model";
 import expressAsyncHandler from "express-async-handler";
 
 // @desc    Get all posts
