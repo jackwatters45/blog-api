@@ -10,7 +10,7 @@ export interface IPost extends Document {
 	createdAt: Date;
 	updatedAt: Date;
 	published: boolean;
-	tags?: Types.Array<string>;
+	tags?: string[];
 	comments?: Types.DocumentArray<Types.ObjectId | IComment>;
 	likes?: Types.DocumentArray<Types.ObjectId | IUser>;
 }

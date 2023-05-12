@@ -13,6 +13,7 @@ const sampleUsers: Partial<IUser>[] = [
 		firstName: "John",
 		lastName: "Watters",
 		email: "john@example.com",
+		username: "johnwatters",
 		password: "password",
 		userType: "admin",
 	},
@@ -20,18 +21,21 @@ const sampleUsers: Partial<IUser>[] = [
 		firstName: "Jane",
 		lastName: "Doe",
 		email: "jane@example.com",
+		username: "janedoe",
 		password: "password",
 	},
 	{
 		firstName: "Alice",
 		lastName: "Johnson",
 		email: "alice@example.com",
+		username: "alicejohnson",
 		password: "password",
 	},
 	{
 		firstName: "Bob",
 		lastName: "Smith",
 		email: "bob@example.com",
+		username: "bobsmith",
 		password: "password",
 	},
 ];
@@ -40,6 +44,7 @@ const samplePosts: Partial<IPost>[] = [
 	{
 		title: "Sample Post 1",
 		content: "This is a sample post.",
+		tags: ["sample", "post"],
 	},
 	{
 		title: "Sample Post 2",
@@ -48,10 +53,12 @@ const samplePosts: Partial<IPost>[] = [
 	{
 		title: "Sample Post 3",
 		content: "This is a third sample post.",
+		tags: ["sample"],
 	},
 	{
 		title: "Sample Post 4",
 		content: "This is a fourth sample post.",
+		tags: ["post"],
 	},
 ];
 
