@@ -28,4 +28,15 @@ const postSchema = new Schema<IPost>(
 	{ timestamps: true },
 );
 
+const toHyphenCase = (str: string) => {
+	return str
+		.split(" ")
+		.map((word) => word.toLowerCase())
+		.join("-");
+};
+
+postSchema.virtual("url").get(function (this: IPost) {
+	return `https://.blogName.com/posts/${toHyphenCase(this.title)}`;
+});
+
 export default model<IPost>("Post", postSchema);

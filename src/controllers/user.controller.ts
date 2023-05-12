@@ -50,6 +50,11 @@ export const createUser = [
 		.trim()
 		.isLength({ min: 8 })
 		.withMessage("Password must be at least 8 characters long"),
+	body("userType")
+		.optional()
+		.trim()
+		.isIn(["admin", "user"])
+		.withMessage("User type must be either admin or user"),
 
 	expressAsyncHandler(async (req: Request, res: Response): Promise<any> => {
 		const errors = validationResult(req);
@@ -58,7 +63,14 @@ export const createUser = [
 		}
 
 		try {
-			const user: IUser = new User(req.body);
+			const { firstName, lastName, email, password, userType } = req.body;
+			const user: IUser = new User({
+				firstName,
+				lastName,
+				email,
+				password,
+				userType,
+			});
 			await user.save();
 			res.status(201).json(user);
 		} catch (error) {
@@ -114,7 +126,6 @@ export const updateUser = [
 // @desc    Delete user
 // @route   DELETE /users/:id
 // @access  Private
-// TODO
 export const deleteUser = expressAsyncHandler(
 	async (req: Request, res: Response): Promise<any> => {
 		try {
@@ -132,7 +143,7 @@ export const deleteUser = expressAsyncHandler(
 // @desc    Search users by specific field
 // @route   GET /users/search?field=value
 // @access  Public
-// TODO
+// TOFO implement search
 export const searchUsers = expressAsyncHandler(
 	async (req: Request, res: Response): Promise<any> => {
 		try {

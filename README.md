@@ -7,13 +7,11 @@
 
 ## TODO
 
-- add user stuff to insomnia
-- probably add username or something for userUrl
 - add url to posts and users
 - connect posts to user etc
 
 - auth stuff
-- test rest of routes
+- search route
 - add auth to routes that need it
 
 - implement user routes in frontend / login / register
