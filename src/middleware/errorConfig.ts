@@ -2,7 +2,6 @@ import { Request, Response, ErrorRequestHandler, Application } from "express";
 import createError from "http-errors";
 
 const configErrorMiddleware = (app: Application) => {
-	// TODO
 	// catch 404 and forward to error handler
 	app.use((req, _res, next) => {
 		next(createError(404));
@@ -25,7 +24,7 @@ const configErrorMiddleware = (app: Application) => {
 
 		// render the error page
 		res.status(err.status || 500);
-		res.render("error");
+		res.send(err.message);
 	};
 
 	app.use(errorHandler);

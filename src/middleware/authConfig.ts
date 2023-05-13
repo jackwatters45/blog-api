@@ -1,11 +1,34 @@
 import passport from "passport";
 import passportLocal from "passport-local";
+import passportJwt from "passport-jwt";
 import { Request, Response, NextFunction, Application } from "express";
 import User from "../models/user.model";
 import bcrypt from "bcryptjs";
 import session from "express-session";
 
 const LocalStrategy = passportLocal.Strategy;
+const JwtStrategy = passportJwt.Strategy;
+const ExtractJwt = passportJwt.ExtractJwt;
+
+interface RequestWithToken extends Request {
+	token?: string;
+}
+
+export const verifyToken = (
+	req: RequestWithToken,
+	res: Response,
+	next: NextFunction,
+) => {
+	const bearerHeader = req.headers["authorization"];
+	if (typeof bearerHeader !== "undefined") {
+		const bearer = bearerHeader.split(" ");
+		const bearerToken = bearer[1];
+		req.token = bearerToken;
+		next();
+	} else {
+		res.sendStatus(403);
+	}
+};
 
 const configPassport = (app: Application) => {
 	passport.use(
@@ -22,6 +45,24 @@ const configPassport = (app: Application) => {
 				return done(err);
 			}
 		}),
+	);
+
+	passport.use(
+		new JwtStrategy(
+			{
+				jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
+				secretOrKey: process.env.JWT_SECRET as string,
+			},
+			async (jwtPayload, done) => {
+				try {
+					const user = await User.findById(jwtPayload.id);
+					if (user) return done(null, user);
+					return done(null, false, { message: "User not found" });
+				} catch (err) {
+					return done(err);
+				}
+			},
+		),
 	);
 
 	interface UserWithId {

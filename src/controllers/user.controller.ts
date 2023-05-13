@@ -185,10 +185,20 @@ export const loginUser = [
 	}),
 ];
 
-// @desc    Register user
-// @route   POST /users/register
-// @access  Public
-
-// @desc    Logout user
-// @route   POST /users/logout
+// @desc    Delete user by query
+// @route   DELETE /users?field=value
 // @access  Private
+export const deleteUserByQuery = expressAsyncHandler(
+	async (req: Request, res: Response): Promise<any> => {
+		try {
+			const query = req.query;
+			const user: IUser | null = await User.findOneAndDelete(query);
+			if (!user) {
+				return res.status(404).json({ message: "User not found" });
+			}
+			res.json(user);
+		} catch (error) {
+			res.status(500).json({ message: error.message });
+		}
+	},
+);

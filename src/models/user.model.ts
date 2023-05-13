@@ -1,4 +1,5 @@
 import { Schema, model, Types, Document } from "mongoose";
+import bcrypt from "bcryptjs";
 
 export interface IUser extends Document {
 	_id: Types.ObjectId;
@@ -14,7 +15,7 @@ export interface IUser extends Document {
 	userType: string;
 }
 
-const userSchema = new Schema<IUser>(
+const UserSchema = new Schema<IUser>(
 	{
 		firstName: { type: String, required: true, trim: true, maxlength: 25 },
 		lastName: { type: String, required: true, trim: true, maxlength: 25 },
@@ -26,12 +27,23 @@ const userSchema = new Schema<IUser>(
 	{ timestamps: true },
 );
 
-userSchema.virtual("fullName").get(function (this: IUser) {
+UserSchema.virtual("fullName").get(function (this: IUser) {
 	return `${this.firstName} ${this.lastName}`;
 });
 
-userSchema.virtual("url").get(function (this: IUser) {
+UserSchema.virtual("url").get(function (this: IUser) {
 	return `https://.blogName.com/users/${this.username}`;
 });
 
-export default model<IUser>("User", userSchema);
+UserSchema.pre("save", function (next) {
+	if (this.isModified("password") || this.isNew) {
+		this.password = bcrypt.hashSync(this.password, 10);
+	}
+	next();
+});
+
+UserSchema.methods.comparePassword = function (password: string) {
+	return bcrypt.compareSync(password, this.password);
+};
+
+export default model<IUser>("User", UserSchema);

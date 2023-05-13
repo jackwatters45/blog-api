@@ -5,13 +5,12 @@
 - how to send better error for unique constraint violation
 - add limit to results
 
-## TODO
+## BEFORE FRONTEND
 
-- update populate
-
-- auth stuff
 - add auth to routes that need it (protect private routes)
+- test routes where auth is needed
+
+## while doing frontend
+
 - search route (for posts and users)
 - like stuff
-
-- implement user routes in frontend / login / register

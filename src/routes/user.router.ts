@@ -2,6 +2,7 @@ import express from "express";
 import {
 	createUser,
 	deleteUser,
+	deleteUserByQuery,
 	getUserById,
 	getUsers,
 	searchUsers,
@@ -21,6 +22,8 @@ router.post("/", createUser);
 router.put("/:id", updateUser);
 
 router.delete("/:id", deleteUser);
+
+router.delete("/", deleteUserByQuery);
 
 // add posts and comments to users (eventually update populate db)
 
