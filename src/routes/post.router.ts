@@ -2,6 +2,7 @@ import express from "express";
 import {
 	createPost,
 	deletePost,
+	getLikes,
 	getPostById,
 	getPosts,
 	likePost,
@@ -9,11 +10,15 @@ import {
 	unlikePost,
 	updatePost,
 } from "../controllers/post.controller";
+import { getCommentsByPostId } from "../controllers/comment.controller";
 
 const router = express.Router();
 
 // /posts
 router.get("/", getPosts);
+
+// /posts/:id
+router.post("/", createPost);
 
 // /posts
 router.get("/search", searchPosts);
@@ -22,18 +27,21 @@ router.get("/search", searchPosts);
 router.get("/:id", getPostById);
 
 // /posts/:id
-router.post("/", createPost);
-
-// /posts/:id
 router.put("/:id", updatePost);
 
 // /posts/:id
 router.delete("/:id", deletePost);
 
 // /posts/:id/like
-router.post("/:id/like", likePost);
+router.get("/:id/likes", getLikes);
+
+// /posts/:id/like
+router.put("/:id/like", likePost);
 
 // /posts/:id/unlike
-router.post("/:id/unlike", unlikePost);
+router.put("/:id/unlike", unlikePost);
+
+// /posts/:id/comments
+router.use("/:id/comments", getCommentsByPostId);
 
 export default router;

@@ -198,3 +198,17 @@ export const deleteUserByQuery = [
 		}
 	}),
 ];
+
+// @desc    Get user posts
+// @route   GET /users/:id/posts
+// @access  Public
+export const getUserPosts = expressAsyncHandler(
+	async (req: Request, res: Response): Promise<any> => {
+		try {
+			const posts = await Post.find({ author: req.params.id });
+			res.json(posts);
+		} catch (error) {
+			res.status(500).json({ message: error.message });
+		}
+	},
+);

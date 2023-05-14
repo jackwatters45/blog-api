@@ -63,10 +63,6 @@ export const createPost = [
 		.isLength({ min: 10 })
 		.withMessage("Content must be at least 100 characters long"),
 	body("tags").optional().isArray().withMessage("Tags must be an array"),
-	body("author")
-		.optional()
-		.isMongoId()
-		.withMessage("Author must be a valid ID"),
 	body("published")
 		.optional()
 		.isBoolean()
@@ -166,8 +162,9 @@ export const deletePost = expressAsyncHandler(
 // @desc    Like post
 // @route   PUT /posts/:id/like
 // @access  Private
-export const likePost = expressAsyncHandler(
-	async (req: Request, res: Response): Promise<any> => {
+export const likePost = [
+	passport.authenticate("jwt", { session: false }),
+	expressAsyncHandler(async (req: Request, res: Response): Promise<any> => {
 		const user = req.user as IUser;
 		if (!user) {
 			return res.status(401).json({ message: "Unauthorized" });
@@ -179,18 +176,24 @@ export const likePost = expressAsyncHandler(
 				{ $addToSet: { likes: user._id } },
 				{ new: true },
 			);
+
+			if (!post) {
+				return res.status(404).json({ message: "Post not found" });
+			}
+
 			res.json(post);
 		} catch (error) {
 			res.status(500).json({ message: error.message });
 		}
-	},
-);
+	}),
+];
 
 // @desc    Unlike post
 // @route   PUT /posts/:id/unlike
 // @access  Private
-export const unlikePost = expressAsyncHandler(
-	async (req: Request, res: Response): Promise<any> => {
+export const unlikePost = [
+	passport.authenticate("jwt", { session: false }),
+	expressAsyncHandler(async (req: Request, res: Response): Promise<any> => {
 		const user = req.user as IUser;
 		if (!user) {
 			return res.status(401).json({ message: "Unauthorized" });
@@ -202,7 +205,29 @@ export const unlikePost = expressAsyncHandler(
 				{ $pull: { likes: user._id } },
 				{ new: true },
 			);
+
+			if (!post) {
+				return res.status(404).json({ message: "Post not found" });
+			}
+
 			res.json(post);
+		} catch (error) {
+			res.status(500).json({ message: error.message });
+		}
+	}),
+];
+// @desc		Get number of likes
+// @route		GET /posts/:id/likes
+// @access		Public
+export const getLikes = expressAsyncHandler(
+	async (req: Request, res: Response): Promise<any> => {
+		try {
+			const post = await Post.findById(req.params.id);
+			if (!post) {
+				return res.status(404).json({ message: "Post not found" });
+			}
+
+			res.json(post.likes?.length);
 		} catch (error) {
 			res.status(500).json({ message: error.message });
 		}

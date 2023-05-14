@@ -4,6 +4,7 @@ import { Request, Response } from "express";
 import Comment from "../models/comment.model";
 import expressAsyncHandler from "express-async-handler";
 import passport from "passport";
+import { IUser } from "../models/user.model";
 
 // @desc    Get all comments
 // @route   GET /comments
@@ -49,7 +50,6 @@ export const createComment = [
 		.trim()
 		.isLength({ min: 1 })
 		.withMessage("Content must be at least 1 character long"),
-	body("author").isMongoId().withMessage("Author must be a valid MongoDB ID"),
 
 	expressAsyncHandler(async (req: Request, res: Response): Promise<any> => {
 		const errors = validationResult(req);
@@ -57,12 +57,22 @@ export const createComment = [
 			return res.status(400).json({ errors: errors.array() });
 		}
 
-		const { content, author } = req.body;
+		console.log(req.user);
+
+		const user = req.user as IUser;
+
+		if (!user) {
+			return res.status(401).json({ message: "Unauthorized" });
+		}
+
+		const author = user._id;
+		const { content, post } = req.body;
 
 		try {
 			const comment = new Comment({
 				content,
 				author,
+				post,
 			});
 
 			const newComment = await comment.save();
@@ -83,10 +93,6 @@ export const updateComment = [
 		.trim()
 		.isLength({ min: 1 })
 		.withMessage("Content must be at least 1 character long"),
-	body("author")
-		.optional()
-		.isMongoId()
-		.withMessage("Author must be a valid MongoDB ID"),
 
 	expressAsyncHandler(async (req: Request, res: Response): Promise<any> => {
 		const errors = validationResult(req);
@@ -95,10 +101,10 @@ export const updateComment = [
 		}
 
 		try {
-			const { content, author } = req.body;
+			const { content } = req.body;
 			const comment = await Comment.findByIdAndUpdate(
 				req.params.id,
-				{ content, author },
+				{ content },
 				{ new: true },
 			);
 
@@ -128,3 +134,20 @@ export const deleteComment = [
 		}
 	}),
 ];
+
+// @desc    Get comments by post id
+// @route   GET posts/:id/comments
+// @access  Private
+export const getCommentsByPostId = expressAsyncHandler(
+	async (req: Request, res: Response) => {
+		try {
+			const comments = await Comment.find({
+				post: req.params.id,
+			}).populate("author", "firstName lastName");
+
+			res.json(comments);
+		} catch (error) {
+			res.status(500).json({ message: error.message });
+		}
+	},
+);

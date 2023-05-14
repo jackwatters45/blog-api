@@ -7,6 +7,7 @@ import {
 	getUsers,
 	searchUsers,
 	updateUser,
+	getUserPosts,
 } from "../controllers/user.controller";
 
 const router = express.Router();
@@ -24,5 +25,7 @@ router.put("/:id", updateUser);
 router.delete("/:id", deleteUser);
 
 router.delete("/", deleteUserByQuery);
+
+router.get("/:id/posts", getUserPosts);
 
 export default router;
