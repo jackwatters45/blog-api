@@ -90,34 +90,38 @@ export const postLogin = [
 			if (!errors.isEmpty())
 				return res.render("login", { errors: errors.array() });
 
-			passport.authenticate("local", function (err: Error, user: IUser) {
-				if (err) return next(err);
-
-				if (!user)
-					return res.status(404).json({ emailNotFound: "Email not found" });
-
-				req.logIn(user, (err) => {
+			passport.authenticate(
+				"local",
+				{ session: false },
+				function (err: Error, user: IUser) {
 					if (err) return next(err);
 
-					const payload = {
-						id: user._id,
-						username: user.username,
-					};
+					if (!user)
+						return res.status(404).json({ emailNotFound: "Email not found" });
 
-					const jwtSecret = process.env.JWT_SECRET;
-					if (!jwtSecret) throw new Error("JWT Secret not defined");
+					req.logIn(user, (err) => {
+						if (err) return next(err);
 
-					const token = jwt.sign(payload, jwtSecret, {
-						expiresIn: "1h",
+						const payload = {
+							id: user._id,
+							username: user.username,
+						};
+
+						const jwtSecret = process.env.JWT_SECRET;
+						if (!jwtSecret) throw new Error("JWT Secret not defined");
+
+						const token = jwt.sign(payload, jwtSecret, {
+							expiresIn: "1h",
+						});
+
+						res.status(200).json({
+							message: "User signed up and logged in successfully.",
+							user,
+							token,
+						});
 					});
-
-					res.status(200).json({
-						message: "User signed up and logged in successfully.",
-						user,
-						token,
-					});
-				});
-			})(req, res, next);
+				},
+			)(req, res, next);
 		},
 	),
 ];

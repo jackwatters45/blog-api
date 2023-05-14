@@ -1,5 +1,5 @@
 import { Schema, model, Types, Document } from "mongoose";
-import bcrypt from "bcryptjs";
+// import bcrypt from "bcryptjs";
 
 export interface IUser extends Document {
 	_id: Types.ObjectId;
@@ -35,15 +35,23 @@ UserSchema.virtual("url").get(function (this: IUser) {
 	return `https://.blogName.com/users/${this.username}`;
 });
 
-UserSchema.pre("save", function (next) {
-	if (this.isModified("password") || this.isNew) {
-		this.password = bcrypt.hashSync(this.password, 10);
-	}
-	next();
-});
+// TODO
+// UserSchema.pre("save", function (next) {
+// 	if (this.isModified("password") || this.isNew) {
+// 		this.password = bcrypt.hashSync(this.password, 10);
+// 	}
+// 	next();
+// });
 
-UserSchema.methods.comparePassword = function (password: string) {
-	return bcrypt.compareSync(password, this.password);
-};
+// UserSchema.methods.comparePassword = function (password: string) {
+// 	return bcrypt.compareSync(password, this.password);
+// };
+
+UserSchema.index({
+	firstName: "text",
+	lastName: "text",
+	email: "text",
+	username: "text",
+});
 
 export default model<IUser>("User", UserSchema);

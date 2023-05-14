@@ -7,10 +7,7 @@
 
 ## BEFORE FRONTEND
 
-- add auth to routes that need it (protect private routes)
-- test routes where auth is needed
-
-## while doing frontend
-
-- search route (for posts and users)
+- add req.user to post and comment
+- figure out how to do jwt in insomnia
+- test routes where auth is needed (make sure it works??)
 - like stuff

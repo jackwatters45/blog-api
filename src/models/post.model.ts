@@ -39,4 +39,11 @@ postSchema.virtual("url").get(function (this: IPost) {
 	return `https://.blogName.com/posts/${toHyphenCase(this.title)}`;
 });
 
+postSchema.index({
+	title: "text",
+	content: "text",
+	author: "text",
+	tags: "text",
+});
+
 export default model<IPost>("Post", postSchema);

@@ -5,6 +5,7 @@ import User, { IUser } from "../models/user.model";
 import expressAsyncHandler from "express-async-handler";
 import Post from "../models/post.model";
 import Comment from "../models/comment.model";
+import passport from "passport";
 
 // @desc    Get all users
 // @route   GET /users
@@ -42,8 +43,8 @@ export const getUserById = expressAsyncHandler(
 // @desc    Create user
 // @route   POST /users
 // @access  Public
-// TODO server side password validation
 export const createUser = [
+	passport.authenticate("jwt", { session: false }),
 	body("firstName")
 		.trim()
 		.isLength({ min: 2 })
@@ -57,6 +58,12 @@ export const createUser = [
 		.trim()
 		.isLength({ min: 8 })
 		.withMessage("Password must be at least 8 characters long"),
+	body("confirmPassword").custom((value, { req }) => {
+		if (value !== req.body.password) {
+			throw new Error("Passwords must match");
+		}
+		return true;
+	}),
 	body("userType")
 		.optional()
 		.trim()
@@ -89,8 +96,8 @@ export const createUser = [
 // @desc    Update user
 // @route   PUT /users/:id
 // @access  Private
-// TODO server side password validation
 export const updateUser = [
+	passport.authenticate("jwt", { session: false }),
 	body("firstName")
 		.optional()
 		.trim()
@@ -107,7 +114,15 @@ export const updateUser = [
 		.trim()
 		.isLength({ min: 8 })
 		.withMessage("Password must be at least 8 characters long"),
-
+	body("confirmPassword")
+		.optional()
+		.custom((value, { req }) => {
+			if (value !== req.body.password) {
+				throw new Error("Passwords must match");
+			}
+			return true;
+		}),
+	body("userType").optional().trim().isIn(["admin", "user"]),
 	expressAsyncHandler(async (req: Request, res: Response): Promise<any> => {
 		const errors = validationResult(req);
 		if (!errors.isEmpty()) {
@@ -133,8 +148,9 @@ export const updateUser = [
 // @desc    Delete user
 // @route   DELETE /users/:id
 // @access  Private
-export const deleteUser = expressAsyncHandler(
-	async (req: Request, res: Response): Promise<any> => {
+export const deleteUser = [
+	passport.authenticate("jwt", { session: false }),
+	expressAsyncHandler(async (req: Request, res: Response): Promise<any> => {
 		try {
 			const user: IUser | null = await User.findByIdAndDelete(req.params.id);
 			if (!user) {
@@ -144,52 +160,32 @@ export const deleteUser = expressAsyncHandler(
 		} catch (error) {
 			res.status(500).json({ message: error.message });
 		}
-	},
-);
+	}),
+];
 
 // @desc    Search users by specific field
 // @route   GET /users/search?field=value
 // @access  Public
-// TODO implement search
 export const searchUsers = expressAsyncHandler(
 	async (req: Request, res: Response): Promise<any> => {
 		try {
-			const query = req.query;
-			res.json(query);
+			const users = await User.find({
+				$text: { $search: req.query.q as string },
+			});
+
+			res.json(users);
 		} catch (error) {
 			res.status(500).json({ message: error.message });
 		}
 	},
 );
 
-// TODO AUTHENTICATION
-// @desc    Login user
-// @route   POST /users/login
-// @access  Public
-export const loginUser = [
-	body("email").trim().isEmail().withMessage("Email must be valid"),
-	body("password")
-		.isLength({ min: 8 })
-		.withMessage("Password must be at least 8 characters long"),
-	expressAsyncHandler(async (req: Request, res: Response): Promise<any> => {
-		const errors = validationResult(req);
-		if (!errors.isEmpty()) {
-			return res.status(400).json({ errors: errors.array() });
-		}
-
-		try {
-			res.json({ message: "login" });
-		} catch (error) {
-			res.status(500).json({ message: error.message });
-		}
-	}),
-];
-
 // @desc    Delete user by query
 // @route   DELETE /users?field=value
 // @access  Private
-export const deleteUserByQuery = expressAsyncHandler(
-	async (req: Request, res: Response): Promise<any> => {
+export const deleteUserByQuery = [
+	passport.authenticate("jwt", { session: false }),
+	expressAsyncHandler(async (req: Request, res: Response): Promise<any> => {
 		try {
 			const query = req.query;
 			const user: IUser | null = await User.findOneAndDelete(query);
@@ -200,5 +196,5 @@ export const deleteUserByQuery = expressAsyncHandler(
 		} catch (error) {
 			res.status(500).json({ message: error.message });
 		}
-	},
-);
+	}),
+];

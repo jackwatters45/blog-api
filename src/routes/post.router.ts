@@ -5,6 +5,7 @@ import {
 	getPostById,
 	getPosts,
 	likePost,
+	searchPosts,
 	unlikePost,
 	updatePost,
 } from "../controllers/post.controller";
@@ -13,6 +14,9 @@ const router = express.Router();
 
 // /posts
 router.get("/", getPosts);
+
+// /posts
+router.get("/search", searchPosts);
 
 // /posts/:id
 router.get("/:id", getPostById);

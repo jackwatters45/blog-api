@@ -25,6 +25,4 @@ router.delete("/:id", deleteUser);
 
 router.delete("/", deleteUserByQuery);
 
-// add posts and comments to users (eventually update populate db)
-
 export default router;

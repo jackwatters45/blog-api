@@ -4,6 +4,7 @@ import { Request, Response } from "express";
 import Post from "../models/post.model";
 import { IUser } from "../models/user.model";
 import expressAsyncHandler from "express-async-handler";
+import passport from "passport";
 
 // @desc    Get all posts
 // @route   GET /posts
@@ -51,8 +52,8 @@ export const getPostById = expressAsyncHandler(
 // @route   POST /posts
 // @access  Private
 // TODO change content length to 100
-// TODO add author once authentication is implemented
 export const createPost = [
+	passport.authenticate("jwt", { session: false }),
 	body("title")
 		.trim()
 		.isLength({ min: 5 })
@@ -76,7 +77,13 @@ export const createPost = [
 			return res.status(400).json({ errors: errors.array() });
 		}
 
-		const { title, content, tags, author, published } = req.body;
+		// TODO test
+		const author = req.user as IUser;
+		if (!author) {
+			return res.status(400).json({ message: "Author is required" });
+		}
+
+		const { title, content, tags, published } = req.body;
 
 		try {
 			const post = new Post({
@@ -109,10 +116,6 @@ export const updatePost = [
 		.isLength({ min: 100 })
 		.withMessage("Content must be at least 100 characters long"),
 	body("tags").optional().isArray().withMessage("Tags must be an array"),
-	body("author")
-		.optional()
-		.isMongoId()
-		.withMessage("Author must be a valid ID"),
 	body("published")
 		.optional()
 		.isBoolean()
@@ -122,7 +125,7 @@ export const updatePost = [
 		if (!errors.isEmpty()) {
 			return res.status(400).json({ errors: errors.array() });
 		}
-		const { title, content, tags, author, published } = req.body;
+		const { title, content, tags, published } = req.body;
 		try {
 			const post = await Post.findByIdAndUpdate(
 				req.params.id,
@@ -130,7 +133,6 @@ export const updatePost = [
 					title,
 					content,
 					tags,
-					author,
 					published,
 				},
 				{ new: true },
@@ -201,6 +203,22 @@ export const unlikePost = expressAsyncHandler(
 				{ new: true },
 			);
 			res.json(post);
+		} catch (error) {
+			res.status(500).json({ message: error.message });
+		}
+	},
+);
+
+// // @desc    Search posts
+// // @route   GET /posts/search
+// // @access  Public
+export const searchPosts = expressAsyncHandler(
+	async (req: Request, res: Response): Promise<any> => {
+		try {
+			const posts = await Post.find({
+				$text: { $search: req.query.q as string },
+			});
+			res.json(posts);
 		} catch (error) {
 			res.status(500).json({ message: error.message });
 		}

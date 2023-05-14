@@ -3,6 +3,7 @@ import { body, validationResult } from "express-validator";
 import { Request, Response } from "express";
 import Comment from "../models/comment.model";
 import expressAsyncHandler from "express-async-handler";
+import passport from "passport";
 
 // @desc    Get all comments
 // @route   GET /comments
@@ -42,8 +43,8 @@ export const getCommentById = expressAsyncHandler(
 // @route   POST /comments
 // @access  Private
 // TODO change author setup to use req.user once authentication is implemented
-// TODO
 export const createComment = [
+	passport.authenticate("jwt", { session: false }),
 	body("content")
 		.trim()
 		.isLength({ min: 1 })
@@ -75,8 +76,8 @@ export const createComment = [
 // @desc    Update comment
 // @route   PATCH /comments/:id
 // @access  Private
-// TODO
 export const updateComment = [
+	passport.authenticate("jwt", { session: false }),
 	body("content")
 		.optional()
 		.trim()
@@ -110,9 +111,10 @@ export const updateComment = [
 
 // @desc    Delete comment
 // @route   DELETE /comments/:id
-// @access  Public
-export const deleteComment = expressAsyncHandler(
-	async (req: Request, res: Response): Promise<any> => {
+// @access  Private
+export const deleteComment = [
+	passport.authenticate("jwt", { session: false }),
+	expressAsyncHandler(async (req: Request, res: Response): Promise<any> => {
 		try {
 			const comment = await Comment.findByIdAndDelete(req.params.id);
 
@@ -124,5 +126,5 @@ export const deleteComment = expressAsyncHandler(
 		} catch (error) {
 			res.status(500).json({ message: error.message });
 		}
-	},
-);
+	}),
+];
