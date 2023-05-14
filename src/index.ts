@@ -26,7 +26,7 @@ configRoutes(app);
 // config error middleware
 configErrorMiddleware(app);
 
-const port = process.env.PORT || "5173";
+const port = process.env.PORT || "5172";
 app.listen(port, () => {
 	console.log(`Server is running on port http://127.0.0.1/${port}`);
 });
