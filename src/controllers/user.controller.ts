@@ -6,6 +6,7 @@ import expressAsyncHandler from "express-async-handler";
 import Post from "../models/post.model";
 import Comment from "../models/comment.model";
 import passport from "passport";
+import bcrypt from "bcryptjs";
 
 // @desc    Get all users
 // @route   GET /users
@@ -81,17 +82,24 @@ export const createUser = [
 		}
 
 		try {
-			const { firstName, lastName, email, password, username, userType } =
-				req.body;
-			const user: IUser = new User({
+			const { firstName, lastName, email, username, userType } = req.body;
+
+			const userExists = await User.findOne({ email });
+			if (userExists)
+				return res.status(400).json({ email: "Email already exists" });
+
+			const hashedPassword = await bcrypt.hash(req.body.password, 10);
+			const user = new User({
 				firstName,
 				lastName,
+				password: hashedPassword,
 				email,
 				username,
-				password,
 				userType,
 			});
-			await user.save();
+
+			const result = await user.save();
+			if (!result) return res.status(500).json("Could not save user");
 			res.status(201).json(user);
 		} catch (error) {
 			res.status(500).json({ message: error.message });

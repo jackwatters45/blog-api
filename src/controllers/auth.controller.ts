@@ -38,7 +38,6 @@ const handleUserLogin = (res: Response, user: IUser) => {
 // @desc    Register a new user
 // @route   POST /signup
 // @access  Public
-// TODO user type?
 export const postSignUp = [
 	body("firstName").notEmpty().trim(),
 	body("lastName").notEmpty().trim(),
@@ -54,7 +53,6 @@ export const postSignUp = [
 			}
 			return true;
 		}),
-	body("userType").optional().trim(),
 	expressAsyncHandler(
 		async (req: Request, res: Response, next: NextFunction): Promise<any> => {
 			try {
