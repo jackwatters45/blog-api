@@ -54,6 +54,10 @@ export const createUser = [
 		.isLength({ min: 2 })
 		.withMessage("Last name must be at least 2 characters long"),
 	body("email").trim().isEmail().withMessage("Email must be valid"),
+	body("username")
+		.trim()
+		.isLength({ min: 2 })
+		.withMessage("Username must be at least 2 characters long"),
 	body("password")
 		.trim()
 		.isLength({ min: 8 })
@@ -77,11 +81,13 @@ export const createUser = [
 		}
 
 		try {
-			const { firstName, lastName, email, password, userType } = req.body;
+			const { firstName, lastName, email, password, username, userType } =
+				req.body;
 			const user: IUser = new User({
 				firstName,
 				lastName,
 				email,
+				username,
 				password,
 				userType,
 			});
@@ -109,6 +115,7 @@ export const updateUser = [
 		.isLength({ min: 2 })
 		.withMessage("Last name must be at least 2 characters long"),
 	body("email").optional().trim().isEmail().withMessage("Email must be valid"),
+	body("username").optional().trim().isLength({ min: 2 }),
 	body("password")
 		.optional()
 		.trim()

@@ -8,26 +8,13 @@ import session from "express-session";
 
 const LocalStrategy = passportLocal.Strategy;
 const JwtStrategy = passportJwt.Strategy;
-const ExtractJwt = passportJwt.ExtractJwt;
 
-interface RequestWithToken extends Request {
-	token?: string;
-}
-
-export const verifyToken = (
-	req: RequestWithToken,
-	res: Response,
-	next: NextFunction,
-) => {
-	const bearerHeader = req.headers["authorization"];
-	if (typeof bearerHeader !== "undefined") {
-		const bearer = bearerHeader.split(" ");
-		const bearerToken = bearer[1];
-		req.token = bearerToken;
-		next();
-	} else {
-		res.sendStatus(403);
+const cookieExtractor = (req: Request): string | null => {
+	let token = null;
+	if (req && req.cookies) {
+		token = req.cookies["jwt"];
 	}
+	return token;
 };
 
 const configPassport = (app: Application) => {
@@ -50,7 +37,7 @@ const configPassport = (app: Application) => {
 	passport.use(
 		new JwtStrategy(
 			{
-				jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
+				jwtFromRequest: cookieExtractor,
 				secretOrKey: process.env.JWT_SECRET as string,
 			},
 			async (jwtPayload, done) => {
@@ -92,7 +79,7 @@ const configPassport = (app: Application) => {
 			secret: process.env.SESSION_SECRET as string,
 			resave: false,
 			saveUninitialized: true,
-			cookie: { maxAge: 1000 * 60 * 60 },
+			cookie: { maxAge: 1000 * 60 * 60, secure: true, sameSite: "none" },
 		}),
 	);
 

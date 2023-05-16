@@ -7,6 +7,34 @@ import User, { IUser } from "../models/user.model";
 import passport from "passport";
 import jwt from "jsonwebtoken";
 
+const handleUserLogin = (res: Response, user: IUser) => {
+	const payload = {
+		id: user._id,
+	};
+
+	const jwtSecret = process.env.JWT_SECRET;
+	if (!jwtSecret) throw new Error("JWT Secret not defined");
+
+	const token = jwt.sign(payload, jwtSecret, {
+		expiresIn: "1h",
+	});
+
+	// TODO secure: true for production
+	res.locals.user = user;
+	res.cookie("jwt", token, {
+		maxAge: 3600000,
+		httpOnly: true,
+		secure: true,
+		sameSite: "none",
+	});
+
+	res.status(200).json({
+		message: "Logged in successfully.",
+		user,
+		token,
+	});
+};
+
 // @desc    Register a new user
 // @route   POST /signup
 // @access  Public
@@ -51,25 +79,7 @@ export const postSignUp = [
 				const result = await user.save();
 				if (!result) throw new Error("Could not save user");
 
-				const payload = {
-					id: user._id,
-					username: user.username,
-				};
-
-				const jwtSecret = process.env.JWT_SECRET;
-
-				if (!jwtSecret) {
-					throw new Error("JWT Secret not defined");
-				}
-
-				const token = jwt.sign(payload, jwtSecret, {
-					expiresIn: "1h",
-				});
-
-				res.status(200).json({
-					message: "User signed up and logged in successfully.",
-					token,
-				});
+				handleUserLogin(res, user);
 			} catch (err) {
 				return next(err);
 			}
@@ -88,7 +98,7 @@ export const postLogin = [
 			const errors = validationResult(req);
 
 			if (!errors.isEmpty())
-				return res.render("login", { errors: errors.array() });
+				return res.status(400).json({ errors: errors.array() });
 
 			passport.authenticate(
 				"local",
@@ -102,23 +112,7 @@ export const postLogin = [
 					req.logIn(user, (err) => {
 						if (err) return next(err);
 
-						const payload = {
-							id: user._id,
-							username: user.username,
-						};
-
-						const jwtSecret = process.env.JWT_SECRET;
-						if (!jwtSecret) throw new Error("JWT Secret not defined");
-
-						const token = jwt.sign(payload, jwtSecret, {
-							expiresIn: "1h",
-						});
-
-						res.status(200).json({
-							message: "User signed up and logged in successfully.",
-							user,
-							token,
-						});
+						handleUserLogin(res, user);
 					});
 				},
 			)(req, res, next);
@@ -130,9 +124,7 @@ export const postLogin = [
 // @route   POST /logout
 // @access  Public
 export const postLogout = (req: Request, res: Response, next: NextFunction) => {
-	res.clearCookie("jwtToken");
-
-	if (req.headers.authorization) req.headers.authorization = "";
+	res.clearCookie("jwt");
 
 	req.logout((err) => {
 		if (err) return next(err);

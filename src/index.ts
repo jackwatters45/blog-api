@@ -1,6 +1,8 @@
 // External dependencies
 import dotenv from "dotenv";
 import express from "express";
+import fs from "fs";
+import https from "https";
 
 // Internal dependencies
 import configAuthMiddleware from "./middleware/authConfig";
@@ -26,9 +28,15 @@ configRoutes(app);
 // config error middleware
 configErrorMiddleware(app);
 
+const options = {
+	key: fs.readFileSync("127.0.0.1-key.pem"),
+	cert: fs.readFileSync("127.0.0.1.pem"),
+};
+
 const port = process.env.PORT || "5172";
-app.listen(port, () => {
-	console.log(`Server is running on port http://127.0.0.1/${port}`);
+
+https.createServer(options, app).listen(port, () => {
+	console.log(`Server is running on port https://127.0.0.1/${port}`);
 });
 
 export default app;
