@@ -258,6 +258,16 @@ export const getPopularAuthors = expressAsyncHandler(
 				{
 					$unwind: "$user",
 				},
+				{
+					$project: {
+						_id: 0,
+						"user._id": 1,
+						"user.firstName": 1,
+						"user.lastName": 1,
+						"user.username": 1,
+						likesCount: 1,
+					},
+				},
 			]);
 			res.json(users);
 		} catch (error) {
