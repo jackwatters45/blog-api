@@ -8,11 +8,14 @@ import {
 	searchUsers,
 	updateUser,
 	getUserPosts,
+	getPopularAuthors,
 } from "../controllers/user.controller";
 
 const router = express.Router();
 
 router.get("/search", searchUsers);
+
+router.get("/popular", getPopularAuthors);
 
 router.get("/", getUsers);
 

@@ -227,3 +227,41 @@ export const getUserPosts = expressAsyncHandler(
 		}
 	},
 );
+
+// @desc    Get Users whose posts have the most like
+// @route   GET /users/popular
+// @access  Public
+export const getPopularAuthors = expressAsyncHandler(
+	async (req: Request, res: Response): Promise<any> => {
+		try {
+			const users = await Post.aggregate([
+				{
+					$group: {
+						_id: "$author",
+						likesCount: { $sum: { $size: "$likes" } },
+					},
+				},
+				{
+					$sort: { likesCount: -1 },
+				},
+				{
+					$limit: 5,
+				},
+				{
+					$lookup: {
+						from: "users",
+						localField: "_id",
+						foreignField: "_id",
+						as: "user",
+					},
+				},
+				{
+					$unwind: "$user",
+				},
+			]);
+			res.json(users);
+		} catch (error) {
+			res.status(500).json({ message: error.message });
+		}
+	},
+);
