@@ -242,7 +242,7 @@ export const getPopularAuthors = expressAsyncHandler(
 					},
 				},
 				{
-					$sort: { likesCount: -1 },
+					$sort: { likesCount: -1, _id: 1 },
 				},
 				{
 					$limit: 5,
