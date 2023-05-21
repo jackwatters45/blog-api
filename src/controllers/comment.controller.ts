@@ -16,7 +16,7 @@ export const getComments = expressAsyncHandler(
 				"author",
 				"firstName lastName",
 			);
-			res.json(comments);
+			res.status(201).json(comments);
 		} catch (error) {
 			res.status(500).json({ message: error.message });
 		}
@@ -33,7 +33,7 @@ export const getCommentById = expressAsyncHandler(
 				"author",
 				"firstName lastName",
 			);
-			res.json(comment);
+			res.status(201).json(comment);
 		} catch (error) {
 			res.status(500).json({ message: error.message });
 		}
@@ -76,7 +76,7 @@ export const createComment = [
 			});
 
 			const newComment = await comment.save();
-			res.status(201).json(newComment);
+			res.status(201).status(201).json(newComment);
 		} catch (error) {
 			res.status(400).json({ message: error.message });
 		}
@@ -108,7 +108,7 @@ export const updateComment = [
 				{ new: true },
 			);
 
-			res.json(comment);
+			res.status(201).json(comment);
 		} catch (error) {
 			res.status(400).json({ message: error.message });
 		}
@@ -128,7 +128,7 @@ export const deleteComment = [
 				return res.status(404).json({ message: "Comment not found" });
 			}
 
-			res.json(comment);
+			res.status(201).json(comment);
 		} catch (error) {
 			res.status(500).json({ message: error.message });
 		}
@@ -145,7 +145,7 @@ export const getCommentsByPostId = expressAsyncHandler(
 				post: req.params.id,
 			}).populate("author", "firstName lastName");
 
-			res.json(comments);
+			res.status(201).json(comments);
 		} catch (error) {
 			res.status(500).json({ message: error.message });
 		}
