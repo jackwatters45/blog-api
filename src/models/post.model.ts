@@ -1,6 +1,10 @@
 import { Schema, model, Types, Document } from "mongoose";
 import { IUser } from "./user.model";
 
+export interface ILike {
+	userId: Types.ObjectId;
+	date: Date;
+}
 export interface IPost extends Document {
 	_id: Types.ObjectId;
 	title: string;
@@ -9,8 +13,9 @@ export interface IPost extends Document {
 	createdAt: Date;
 	updatedAt: Date;
 	published: boolean;
+	topic?: Types.ObjectId;
 	tags?: string[];
-	likes?: Types.DocumentArray<Types.ObjectId | IUser>;
+	likes?: ILike[];
 }
 
 const postSchema = new Schema<IPost>(
@@ -19,8 +24,14 @@ const postSchema = new Schema<IPost>(
 		content: { type: String, required: true, trim: true },
 		author: { type: Types.ObjectId, ref: "User", required: true },
 		published: { type: Boolean, required: true, default: false },
+		topic: { type: Types.ObjectId, ref: "Topic" },
 		tags: [{ type: String, trim: true }],
-		likes: [{ type: Types.ObjectId, ref: "User" }],
+		likes: [
+			{
+				userId: { type: Types.ObjectId, ref: "User" },
+				date: { type: Date, default: Date.now },
+			},
+		],
 	},
 	{ timestamps: true },
 );

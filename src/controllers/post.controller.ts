@@ -14,12 +14,7 @@ export const getPosts = expressAsyncHandler(
 		try {
 			const posts = await Post.find({ published: true })
 				.populate("author", "firstName lastName")
-				.populate("likes", "email")
-				.populate({
-					path: "comments",
-					select: "content",
-					populate: { path: "author", select: "firstName lastName" },
-				});
+				.sort({ createdAt: -1 });
 			res.json(posts);
 		} catch (error) {
 			res.status(500).json({ message: error.message });
@@ -35,12 +30,12 @@ export const getPostById = expressAsyncHandler(
 		try {
 			const post = await Post.findById(req.params.id)
 				.populate("author", "firstName lastName")
-				.populate("likes", "email")
-				.populate({
-					path: "comments",
-					select: "content",
-					populate: { path: "author", select: "firstName lastName" },
-				});
+				.populate("likes", "email");
+			// .populate({
+			// 	path: "comments",
+			// 	select: "content",
+			// 	populate: { path: "author", select: "firstName lastName" },
+			// });
 			res.json(post);
 		} catch (error) {
 			res.status(500).json({ message: error.message });
@@ -62,6 +57,7 @@ export const createPost = [
 		.trim()
 		.isLength({ min: 10 })
 		.withMessage("Content must be at least 100 characters long"),
+	body("topic").notEmpty().withMessage("Topic is required"),
 	body("tags").optional().isArray().withMessage("Tags must be an array"),
 	body("published")
 		.optional()
@@ -111,6 +107,7 @@ export const updatePost = [
 		.trim()
 		.isLength({ min: 100 })
 		.withMessage("Content must be at least 100 characters long"),
+	body("topic").optional().notEmpty().withMessage("Topic is required"),
 	body("tags").optional().isArray().withMessage("Tags must be an array"),
 	body("published")
 		.optional()
@@ -173,13 +170,11 @@ export const likePost = [
 		try {
 			const post = await Post.findByIdAndUpdate(
 				req.params.id,
-				{ $addToSet: { likes: user._id } },
+				{ $addToSet: { likes: { userId: user._id, date: new Date() } } },
 				{ new: true },
 			);
 
-			if (!post) {
-				return res.status(404).json({ message: "Post not found" });
-			}
+			if (!post) return res.status(404).json({ message: "Post not found" });
 
 			res.json(post);
 		} catch (error) {
@@ -199,10 +194,11 @@ export const unlikePost = [
 			return res.status(401).json({ message: "Unauthorized" });
 		}
 
+		console.log(user._id);
 		try {
 			const post = await Post.findByIdAndUpdate(
 				req.params.id,
-				{ $pull: { likes: user._id } },
+				{ $pull: { likes: { userId: user._id } } },
 				{ new: true },
 			);
 
@@ -234,15 +230,39 @@ export const getLikes = expressAsyncHandler(
 	},
 );
 
-// // @desc    Search posts
-// // @route   GET /posts/search
-// // @access  Public
+// @desc    Search posts
+// @route   GET /posts/search
+// @access  Public
 export const searchPosts = expressAsyncHandler(
 	async (req: Request, res: Response): Promise<any> => {
 		try {
 			const posts = await Post.find({
 				$text: { $search: req.query.q as string },
 			});
+			res.json(posts);
+		} catch (error) {
+			res.status(500).json({ message: error.message });
+		}
+	},
+);
+
+// @desc    Get popular posts
+// @route   GET /posts/popular
+// @access  Public
+export const getPopularPosts = expressAsyncHandler(
+	async (req: Request, res: Response): Promise<any> => {
+		try {
+			const postsQuery = Post.find({ published: true })
+				.populate("author", "firstName lastName")
+				.sort({ likes: -1 });
+
+			if (req.query.limit) {
+				const limit = parseInt(req.query.limit as string);
+				postsQuery.limit(limit);
+			}
+
+			const posts = await postsQuery.exec();
+
 			res.json(posts);
 		} catch (error) {
 			res.status(500).json({ message: error.message });
