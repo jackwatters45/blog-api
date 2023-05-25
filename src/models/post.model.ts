@@ -15,7 +15,8 @@ export interface IPost extends Document {
 	published: boolean;
 	topic?: Types.ObjectId;
 	tags?: string[];
-	likes?: ILike[];
+	likes: ILike[];
+	comments: Types.ObjectId[];
 }
 
 const postSchema = new Schema<IPost>(
@@ -32,9 +33,14 @@ const postSchema = new Schema<IPost>(
 				date: { type: Date, default: Date.now },
 			},
 		],
+		comments: [{ type: Types.ObjectId, ref: "Comment" }],
 	},
 	{ timestamps: true },
 );
+
+// set default array
+postSchema.path("likes").default([]);
+postSchema.path("comments").default([]);
 
 const toHyphenCase = (str: string) => {
 	return str

@@ -3,6 +3,7 @@ import {
 	createPost,
 	deletePost,
 	getLikes,
+	getPopularPosts,
 	getPostById,
 	getPosts,
 	likePost,
@@ -22,6 +23,9 @@ router.post("/", createPost);
 
 // /posts
 router.get("/search", searchPosts);
+
+// /posts/popular
+router.get("/popular", getPopularPosts);
 
 // /posts/:id
 router.get("/:id", getPostById);

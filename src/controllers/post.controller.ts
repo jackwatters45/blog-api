@@ -29,13 +29,12 @@ export const getPostById = expressAsyncHandler(
 	async (req: Request, res: Response) => {
 		try {
 			const post = await Post.findById(req.params.id)
-				.populate("author", "firstName lastName")
-				.populate("likes", "email");
-			// .populate({
-			// 	path: "comments",
-			// 	select: "content",
-			// 	populate: { path: "author", select: "firstName lastName" },
-			// });
+				.populate("author", "firstName lastName description followers")
+				.populate("likes", "email")
+				.populate({
+					path: "comments",
+					populate: { path: "author", select: "firstName lastName" },
+				});
 			res.json(post);
 		} catch (error) {
 			res.status(500).json({ message: error.message });
