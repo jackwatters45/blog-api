@@ -111,8 +111,8 @@ export const updatePost = [
 	body("content")
 		.optional()
 		.trim()
-		.isLength({ min: 100 })
-		.withMessage("Content must be at least 100 characters long"),
+		.isLength({ min: 500 })
+		.withMessage("Content must be at least 500 characters long"),
 	body("topic").optional().notEmpty().withMessage("Topic is required"),
 	body("tags").optional().isArray().withMessage("Tags must be an array"),
 	body("published")
@@ -258,9 +258,50 @@ export const searchPosts = expressAsyncHandler(
 export const getPopularPosts = expressAsyncHandler(
 	async (req: Request, res: Response): Promise<any> => {
 		try {
-			const postsQuery = Post.find({ published: true })
-				.populate("author", "firstName lastName")
-				.sort({ likes: -1 });
+			let start;
+			switch (req.query.timeRange) {
+				case "lastYear":
+					start = new Date();
+					start.setFullYear(start.getFullYear() - 1);
+					break;
+				case "lastMonth":
+					start = new Date();
+					start.setMonth(start.getMonth() - 1);
+					break;
+				case "lastWeek":
+					start = new Date();
+					start.setDate(start.getDate() - 7);
+					break;
+				case "today":
+					start = new Date();
+					start.setHours(0, 0, 0, 0);
+					break;
+				default:
+					start = new Date(0);
+			}
+
+			const postsQuery = Post.aggregate([
+				{
+					$match: {
+						published: true,
+						"likes.date": {
+							$gte: start,
+						},
+					},
+				},
+				{
+					$addFields: {
+						likeCount: {
+							$size: "$likes",
+						},
+					},
+				},
+				{
+					$sort: {
+						likeCount: -1,
+					},
+				},
+			]);
 
 			if (req.query.limit) {
 				const limit = parseInt(req.query.limit as string);

@@ -22,7 +22,7 @@ export interface IPost extends Document {
 const postSchema = new Schema<IPost>(
 	{
 		title: { type: String, required: true, trim: true, maxlength: 100 },
-		content: { type: String, required: true, trim: true },
+		content: { type: String, required: true, trim: true, minlength: 500 },
 		author: { type: Types.ObjectId, ref: "User", required: true },
 		published: { type: Boolean, required: true, default: false },
 		topic: { type: Types.ObjectId, ref: "Topic" },

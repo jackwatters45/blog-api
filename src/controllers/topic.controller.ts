@@ -6,6 +6,7 @@ import passport from "passport";
 import { IUser } from "../models/user.model";
 import Topic from "../models/topic.model";
 import Post from "../models/post.model";
+import { Types } from "mongoose";
 
 // @desc    Get all topics
 // @route   GET /topics
@@ -13,7 +14,7 @@ import Post from "../models/post.model";
 export const getTopics = expressAsyncHandler(
 	async (req: Request, res: Response) => {
 		try {
-			const topicsQuery = Topic.find().select("name _id");
+			const topicsQuery = Topic.find();
 
 			if (req.query.limit) {
 				const limit = parseInt(req.query.limit as string);
@@ -34,18 +35,62 @@ export const getTopics = expressAsyncHandler(
 export const getPostsByTopic = expressAsyncHandler(
 	async (req: Request, res: Response) => {
 		try {
-			const topic = await Topic.findById(req.params.id);
-			const postsQuery = Post.find({
-				topic: req.params.id,
-				published: true,
-			}).populate("author", "firstName lastName");
-
+			let limit = 100; // default limit
 			if (req.query.limit) {
-				const limit = parseInt(req.query.limit as string);
-				postsQuery.limit(limit);
+				limit = parseInt(req.query.limit as string);
 			}
 
-			const posts = await postsQuery.exec();
+			const topic = await Topic.findById(req.params.id);
+			const posts = await Post.aggregate([
+				{
+					$match: {
+						topic: new Types.ObjectId(req.params.id),
+						published: true,
+					},
+				},
+				{
+					$addFields: {
+						numberOfLikes: { $size: { $ifNull: ["$likes", []] } },
+					},
+				},
+				{
+					$sort: { numberOfLikes: -1, createdAt: -1 },
+				},
+				{
+					$limit: limit,
+				},
+				{
+					$lookup: {
+						from: "users",
+						localField: "author",
+						foreignField: "_id",
+						as: "author",
+					},
+				},
+				{
+					$unwind: {
+						path: "$author",
+						preserveNullAndEmptyArrays: true,
+					},
+				},
+				{
+					$project: {
+						_id: 1,
+						createdAt: 1,
+						likes: 1,
+						comments: 1,
+						tags: 1,
+						content: 1,
+						title: 1,
+						author: {
+							_id: "$author._id",
+							firstName: "$author.firstName",
+							lastName: "$author.lastName",
+						},
+					},
+				},
+			]);
+
 			res.status(201).json({ posts, topic });
 		} catch (error) {
 			res.status(500).json({ message: error.message });
@@ -145,36 +190,57 @@ export const getPopularTopics = expressAsyncHandler(
 				limit = parseInt(req.query.limit as string);
 			}
 
-			const topics = await Post.aggregate([
+			let sortBy = "totalPosts"; // default sort
+			if (req.query.sortBy) {
+				sortBy = req.query.sortBy as string;
+			}
+
+			const topics = await Topic.aggregate([
 				{
-					$group: {
-						_id: "$topic",
-						topicCount: { $sum: 1 },
+					$lookup: {
+						from: "posts",
+						let: { topicId: "$_id" },
+						pipeline: [
+							{
+								$match: {
+									$expr: {
+										$eq: ["$$topicId", "$topic"],
+									},
+								},
+							},
+							{
+								$unwind: {
+									path: "$likes",
+									preserveNullAndEmptyArrays: true,
+								},
+							},
+							{
+								$group: {
+									_id: "$topic",
+									totalPosts: { $sum: 1 },
+									totalLikes: {
+										$sum: { $cond: [{ $ifNull: ["$likes", false] }, 1, 0] },
+									},
+								},
+							},
+						],
+						as: "postDetails",
+					},
+				},
+				{ $unwind: { path: "$postDetails", preserveNullAndEmptyArrays: true } },
+				{
+					$project: {
+						_id: 1,
+						name: 1,
+						totalPosts: { $ifNull: ["$postDetails.totalPosts", 0] },
+						totalLikes: { $ifNull: ["$postDetails.totalLikes", 0] },
 					},
 				},
 				{
-					$sort: { topicCount: -1, _id: 1 },
+					$sort: { [sortBy]: -1, _id: 1 },
 				},
 				{
 					$limit: limit,
-				},
-				{
-					$lookup: {
-						from: "topics",
-						localField: "_id",
-						foreignField: "_id",
-						as: "topicDetails",
-					},
-				},
-				{
-					$unwind: "$topicDetails",
-				},
-				{
-					$project: {
-						_id: 0,
-						"topicDetails._id": 1,
-						"topicDetails.name": 1,
-					},
 				},
 			]);
 

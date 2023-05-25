@@ -269,17 +269,62 @@ export const getUserPosts = expressAsyncHandler(
 export const getPopularAuthors = expressAsyncHandler(
 	async (req: Request, res: Response): Promise<any> => {
 		try {
+			let start;
+			switch (req.query.timeRange) {
+				case "lastYear":
+					start = new Date();
+					start.setFullYear(start.getFullYear() - 1);
+					break;
+				case "lastMonth":
+					start = new Date();
+					start.setMonth(start.getMonth() - 1);
+					break;
+				case "lastWeek":
+					start = new Date();
+					start.setDate(start.getDate() - 7);
+					break;
+				case "today":
+					start = new Date();
+					start.setHours(0, 0, 0, 0);
+					break;
+				default:
+					start = new Date(0);
+			}
+
 			const limit = req.query.limit ? parseInt(req.query.limit as string) : 10;
 
 			const users = await Post.aggregate([
 				{
-					$group: {
-						_id: "$author",
-						likesCount: { $sum: { $size: "$likes" } },
+					$addFields: {
+						likesCount: { $size: "$likes" },
 					},
 				},
 				{
-					$sort: { likesCount: -1, _id: 1 },
+					$unwind: {
+						path: "$likes",
+						preserveNullAndEmptyArrays: true,
+					},
+				},
+				{
+					$addFields: {
+						isInRange: {
+							$cond: {
+								if: { $gte: ["$likes.date", start] },
+								then: 1,
+								else: 0,
+							},
+						},
+					},
+				},
+				{
+					$group: {
+						_id: "$author",
+						likesCountInTimeRange: { $sum: "$isInRange" },
+						likesCount: { $first: "$likesCount" },
+					},
+				},
+				{
+					$sort: { likesCountInTimeRange: -1, _id: 1 },
 				},
 				{
 					$limit: limit,
@@ -297,11 +342,14 @@ export const getPopularAuthors = expressAsyncHandler(
 				},
 				{
 					$project: {
-						_id: 0,
-						"user._id": 1,
-						"user.firstName": 1,
-						"user.lastName": 1,
-						"user.username": 1,
+						_id: "$user._id",
+						firstName: "$user.firstName",
+						lastName: "$user.lastName",
+						username: "$user.username",
+						description: "$user.description",
+						followers: "$user.followers",
+						createdAt: "$user.createdAt",
+						likesCountInTimeRange: 1,
 						likesCount: 1,
 					},
 				},
@@ -323,9 +371,6 @@ export const addFollower = [
 		session.startTransaction();
 
 		try {
-			const userFollowedFind = await User.findById(req.params.id);
-			console.log("userFollowedFind", userFollowedFind);
-
 			const userFollowed = await User.findByIdAndUpdate(
 				req.params.id,
 				{ $addToSet: { followers: (req.user as IUser)?._id } },
