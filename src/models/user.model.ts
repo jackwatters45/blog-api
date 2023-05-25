@@ -13,6 +13,9 @@ export interface IUser extends Document {
 	createdAt: Date;
 	updatedAt: Date;
 	userType: string;
+	followers: Types.ObjectId[];
+	following: Types.ObjectId[];
+	description?: string;
 }
 
 const UserSchema = new Schema<IUser>(
@@ -22,7 +25,16 @@ const UserSchema = new Schema<IUser>(
 		email: { type: String, required: true, trim: true, unique: true },
 		username: { type: String, required: true, trim: true, unique: true },
 		password: { type: String, required: true, trim: true, minlength: 8 },
-		userType: { type: String, required: true, trim: true, default: "user" },
+		userType: {
+			type: String,
+			required: true,
+			trim: true,
+			default: "user",
+			enum: ["user", "admin"],
+		},
+		followers: [{ type: Types.ObjectId, ref: "User", default: [] }],
+		following: [{ type: Types.ObjectId, ref: "User", default: [] }],
+		description: { type: String, trim: true },
 	},
 	{ timestamps: true },
 );

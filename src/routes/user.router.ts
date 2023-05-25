@@ -9,6 +9,8 @@ import {
 	updateUser,
 	getUserPosts,
 	getPopularAuthors,
+	addFollower,
+	removeFollower,
 } from "../controllers/user.controller";
 
 const router = express.Router();
@@ -16,6 +18,10 @@ const router = express.Router();
 router.get("/search", searchUsers);
 
 router.get("/popular", getPopularAuthors);
+
+router.put("/:id/follow", addFollower);
+
+router.put("/:id/unfollow", removeFollower);
 
 router.get("/", getUsers);
 

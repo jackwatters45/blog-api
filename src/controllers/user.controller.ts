@@ -7,6 +7,7 @@ import Post from "../models/post.model";
 import Comment from "../models/comment.model";
 import passport from "passport";
 import bcrypt from "bcryptjs";
+import { startSession } from "mongoose";
 
 // @desc    Get all users
 // @route   GET /users
@@ -29,9 +30,28 @@ export const getUserById = expressAsyncHandler(
 	async (req: Request, res: Response) => {
 		try {
 			const [user, posts, comments] = await Promise.all([
-				User.findById(req.params.id),
-				Post.find({ published: true, author: req.params.id }),
-				Comment.find({ author: req.params.id }),
+				User.findById(req.params.id).populate({
+					path: "following",
+					options: { limit: 5 },
+				}),
+				Post.find({ published: true, author: req.params.id }).populate({
+					path: "author",
+					select: "firstName lastName",
+				}),
+				Comment.find({ author: req.params.id }).populate([
+					{
+						path: "author",
+						select: "firstName lastName",
+					},
+					{
+						path: "post",
+						select: "title",
+						populate: {
+							path: "author",
+							select: "firstName lastName",
+						},
+					},
+				]),
 			]);
 
 			res.json({ user, posts, comments });
@@ -234,6 +254,10 @@ export const getUserPosts = expressAsyncHandler(
 export const getPopularAuthors = expressAsyncHandler(
 	async (req: Request, res: Response): Promise<any> => {
 		try {
+			let limit = 10;
+			if (req.query.limit) {
+				limit = parseInt(req.query.limit as string);
+			}
 			const users = await Post.aggregate([
 				{
 					$group: {
@@ -245,7 +269,7 @@ export const getPopularAuthors = expressAsyncHandler(
 					$sort: { likesCount: -1, _id: 1 },
 				},
 				{
-					$limit: 5,
+					$limit: limit,
 				},
 				{
 					$lookup: {
@@ -275,3 +299,86 @@ export const getPopularAuthors = expressAsyncHandler(
 		}
 	},
 );
+
+// @desc    Add follower to user
+// @route   PUT /users/:id/follow
+// @access  Private
+export const addFollower = [
+	passport.authenticate("jwt", { session: false }),
+	expressAsyncHandler(async (req: Request, res: Response): Promise<any> => {
+		const session = await startSession();
+		session.startTransaction();
+
+		try {
+			const userFollowedFind = await User.findById(req.params.id);
+			console.log("userFollowedFind", userFollowedFind);
+
+			const userFollowed = await User.findByIdAndUpdate(
+				req.params.id,
+				{ $addToSet: { followers: (req.user as IUser)?._id } },
+				{ new: true, session },
+			);
+
+			const userFollowing = await User.findByIdAndUpdate(
+				(req.user as IUser)?._id,
+				{ $addToSet: { following: req.params.id } },
+				{ new: true, session },
+			);
+
+			console.log("userfollowed", userFollowed);
+			console.log("userFollowing", userFollowing);
+			if (!userFollowed || !userFollowing) {
+				await session.abortTransaction();
+				session.endSession();
+				return res.status(404).json({ message: "User not found" });
+			}
+
+			await session.commitTransaction();
+			session.endSession();
+			res.json({ userFollowed, userFollowing });
+		} catch (error) {
+			await session.abortTransaction();
+			session.endSession();
+			res.status(500).json({ message: error.message });
+		}
+	}),
+];
+
+// @desc    Remove follower from user
+// @route   PUT /users/:id/unfollow
+// @access  Private
+export const removeFollower = [
+	passport.authenticate("jwt", { session: false }),
+	expressAsyncHandler(async (req: Request, res: Response): Promise<any> => {
+		const session = await startSession();
+		session.startTransaction();
+
+		try {
+			const userUnfollowed = await User.findByIdAndUpdate(
+				req.params.id,
+				{ $pull: { followers: (req.user as IUser)?._id } },
+				{ new: true, session },
+			);
+
+			const userUnfollowing = await User.findByIdAndUpdate(
+				(req.user as IUser)?._id,
+				{ $pull: { following: req.params.id } },
+				{ new: true, session },
+			);
+
+			if (!userUnfollowed || !userUnfollowing) {
+				await session.abortTransaction();
+				session.endSession();
+				return res.status(404).json({ message: "User not found" });
+			}
+
+			await session.commitTransaction();
+			session.endSession();
+			res.json({ userUnfollowed, userUnfollowing });
+		} catch (error) {
+			await session.abortTransaction();
+			session.endSession();
+			res.status(500).json({ message: error.message });
+		}
+	}),
+];

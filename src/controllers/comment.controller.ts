@@ -5,6 +5,8 @@ import Comment from "../models/comment.model";
 import expressAsyncHandler from "express-async-handler";
 import passport from "passport";
 import { IUser } from "../models/user.model";
+import Post from "../models/post.model";
+import { startSession } from "mongoose";
 
 // @desc    Get all comments
 // @route   GET /comments
@@ -43,21 +45,19 @@ export const getCommentById = expressAsyncHandler(
 // @desc    Create comment
 // @route   POST /comments
 // @access  Private
-// TODO change author setup to use req.user once authentication is implemented
 export const createComment = [
 	passport.authenticate("jwt", { session: false }),
 	body("content")
 		.trim()
 		.isLength({ min: 1 })
 		.withMessage("Content must be at least 1 character long"),
+	body("post").notEmpty().isMongoId().withMessage("Post is required"),
 
 	expressAsyncHandler(async (req: Request, res: Response): Promise<any> => {
 		const errors = validationResult(req);
 		if (!errors.isEmpty()) {
 			return res.status(400).json({ errors: errors.array() });
 		}
-
-		console.log(req.user);
 
 		const user = req.user as IUser;
 
@@ -68,6 +68,9 @@ export const createComment = [
 		const author = user._id;
 		const { content, post } = req.body;
 
+		const session = await startSession();
+		session.startTransaction();
+
 		try {
 			const comment = new Comment({
 				content,
@@ -76,8 +79,25 @@ export const createComment = [
 			});
 
 			const newComment = await comment.save();
+
+			const updatedPost = await Post.findByIdAndUpdate(
+				post,
+				{
+					$push: { comments: newComment._id },
+				},
+				{ new: true, session },
+			);
+
+			await session.commitTransaction();
+			session.endSession();
+
+			console.log(newComment);
+			console.log(updatedPost);
 			res.status(201).status(201).json(newComment);
 		} catch (error) {
+			await session.abortTransaction();
+			session.endSession();
+
 			res.status(400).json({ message: error.message });
 		}
 	}),
