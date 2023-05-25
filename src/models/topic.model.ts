@@ -1,15 +1,15 @@
 import { Schema, model, Types, Document } from "mongoose";
 
-export interface IComment extends Document {
+export interface ITopic extends Document {
 	_id: Types.ObjectId;
 	name: string;
 }
 
-const commentSchema = new Schema<IComment>(
+const topicSchema = new Schema<ITopic>(
 	{
 		name: { type: String, required: true, trim: true },
 	},
 	{ timestamps: true },
 );
 
-export default model<IComment>("Comment", commentSchema);
+export default model<ITopic>("Topic", topicSchema);

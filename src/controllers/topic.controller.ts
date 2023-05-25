@@ -13,7 +13,7 @@ import Post from "../models/post.model";
 export const getTopics = expressAsyncHandler(
 	async (req: Request, res: Response) => {
 		try {
-			const topics = await Topic.find();
+			const topics = await Topic.find().select("name _id");
 			res.status(201).json(topics);
 		} catch (error) {
 			res.status(500).json({ message: error.message });
@@ -27,11 +27,12 @@ export const getTopics = expressAsyncHandler(
 export const getPostsByTopic = expressAsyncHandler(
 	async (req: Request, res: Response) => {
 		try {
+			const topic = await Topic.findById(req.params.id);
 			const posts = await Post.find({
-				name: req.params.id,
+				topic: req.params.id,
 				published: true,
 			}).populate("author", "firstName lastName");
-			res.status(201).json(posts);
+			res.status(201).json({ posts, topic });
 		} catch (error) {
 			res.status(500).json({ message: error.message });
 		}
@@ -118,3 +119,54 @@ export const deleteTopic = [
 		}
 	}),
 ];
+
+// @desc    Get popular topics
+// @route   GET /topics/popular
+// @access  Public
+export const getPopularTopics = expressAsyncHandler(
+	async (req: Request, res: Response): Promise<any> => {
+		try {
+			let limit = 10; // default limit
+			if (req.query.limit) {
+				limit = parseInt(req.query.limit as string);
+			}
+
+			const topics = await Post.aggregate([
+				{
+					$group: {
+						_id: "$topic",
+						topicCount: { $sum: 1 },
+					},
+				},
+				{
+					$sort: { topicCount: -1, _id: 1 },
+				},
+				{
+					$limit: limit,
+				},
+				{
+					$lookup: {
+						from: "topics",
+						localField: "_id",
+						foreignField: "_id",
+						as: "topicDetails",
+					},
+				},
+				{
+					$unwind: "$topicDetails",
+				},
+				{
+					$project: {
+						_id: 0,
+						"topicDetails._id": 1,
+						"topicDetails.name": 1,
+					},
+				},
+			]);
+
+			res.status(201).json(topics);
+		} catch (error) {
+			res.status(500).json({ message: error.message });
+		}
+	},
+);

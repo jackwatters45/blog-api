@@ -5,11 +5,15 @@ import {
 	getTopics,
 	deleteTopic,
 	updateTopic,
+	getPopularTopics,
 } from "../controllers/topic.controller";
 const router = express.Router();
 
 // /topics
 router.get("/", getTopics);
+
+// /topics/popular
+router.get("/popular", getPopularTopics);
 
 // /topics/:id
 router.get("/:id", getPostsByTopic);
