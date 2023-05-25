@@ -122,7 +122,17 @@ export const postLogin = [
 // @route   POST /logout
 // @access  Public
 export const postLogout = (req: Request, res: Response, next: NextFunction) => {
-	res.clearCookie("jwt");
+	res.clearCookie("jwt", {
+		maxAge: 3600000,
+		httpOnly: true,
+		secure: true,
+		sameSite: "none",
+	});
+	res.clearCookie("connect.sid", {
+		maxAge: 1000 * 60 * 60,
+		secure: true,
+		sameSite: "none",
+	});
 
 	req.logout((err) => {
 		if (err) return next(err);
