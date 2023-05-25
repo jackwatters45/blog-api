@@ -13,7 +13,14 @@ import Post from "../models/post.model";
 export const getTopics = expressAsyncHandler(
 	async (req: Request, res: Response) => {
 		try {
-			const topics = await Topic.find().select("name _id");
+			const topicsQuery = Topic.find().select("name _id");
+
+			if (req.query.limit) {
+				const limit = parseInt(req.query.limit as string);
+				topicsQuery.limit(limit);
+			}
+
+			const topics = await topicsQuery.exec();
 			res.status(201).json(topics);
 		} catch (error) {
 			res.status(500).json({ message: error.message });
@@ -28,10 +35,17 @@ export const getPostsByTopic = expressAsyncHandler(
 	async (req: Request, res: Response) => {
 		try {
 			const topic = await Topic.findById(req.params.id);
-			const posts = await Post.find({
+			const postsQuery = Post.find({
 				topic: req.params.id,
 				published: true,
 			}).populate("author", "firstName lastName");
+
+			if (req.query.limit) {
+				const limit = parseInt(req.query.limit as string);
+				postsQuery.limit(limit);
+			}
+
+			const posts = await postsQuery.exec();
 			res.status(201).json({ posts, topic });
 		} catch (error) {
 			res.status(500).json({ message: error.message });

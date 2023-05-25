@@ -14,10 +14,17 @@ import { startSession } from "mongoose";
 export const getComments = expressAsyncHandler(
 	async (req: Request, res: Response) => {
 		try {
-			const comments = await Comment.find().populate(
+			const commentsQuery = Comment.find().populate(
 				"author",
 				"firstName lastName",
 			);
+
+			if (req.query.limit) {
+				const limit = parseInt(req.query.limit as string);
+				commentsQuery.limit(limit);
+			}
+
+			const comments = await commentsQuery.exec();
 			res.status(201).json(comments);
 		} catch (error) {
 			res.status(500).json({ message: error.message });
@@ -43,7 +50,7 @@ export const getCommentById = expressAsyncHandler(
 );
 
 // @desc    Create comment
-// @route   POST /comments
+// @route   POST /posts/:id/comments
 // @access  Private
 export const createComment = [
 	passport.authenticate("jwt", { session: false }),
@@ -51,7 +58,6 @@ export const createComment = [
 		.trim()
 		.isLength({ min: 1 })
 		.withMessage("Content must be at least 1 character long"),
-	body("post").notEmpty().isMongoId().withMessage("Post is required"),
 
 	expressAsyncHandler(async (req: Request, res: Response): Promise<any> => {
 		const errors = validationResult(req);
@@ -66,7 +72,8 @@ export const createComment = [
 		}
 
 		const author = user._id;
-		const { content, post } = req.body;
+		const { post } = req.params;
+		const { content } = req.body;
 
 		const session = await startSession();
 		session.startTransaction();

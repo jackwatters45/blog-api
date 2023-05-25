@@ -15,7 +15,14 @@ import { startSession } from "mongoose";
 export const getUsers = expressAsyncHandler(
 	async (req: Request, res: Response) => {
 		try {
-			const users = await User.find();
+			const usersQuery = User.find();
+
+			if (req.query.limit) {
+				const limit = parseInt(req.query.limit as string);
+				usersQuery.limit(limit);
+			}
+
+			const users = await usersQuery.exec();
 			res.json(users);
 		} catch (error) {
 			res.status(500).json({ message: error.message });
@@ -29,10 +36,11 @@ export const getUsers = expressAsyncHandler(
 export const getUserById = expressAsyncHandler(
 	async (req: Request, res: Response) => {
 		try {
+			const limit = req.query.limit ? parseInt(req.query.limit as string) : 5;
 			const [user, posts, comments] = await Promise.all([
 				User.findById(req.params.id).populate({
 					path: "following",
-					options: { limit: 5 },
+					options: { limit },
 				}),
 				Post.find({ published: true, author: req.params.id }).populate({
 					path: "author",
@@ -240,7 +248,14 @@ export const deleteUserByQuery = [
 export const getUserPosts = expressAsyncHandler(
 	async (req: Request, res: Response): Promise<any> => {
 		try {
-			const posts = await Post.find({ author: req.params.id });
+			const postsQuery = Post.find({ author: req.params.id });
+
+			if (req.query.limit) {
+				const limit = parseInt(req.query.limit as string);
+				postsQuery.limit(limit);
+			}
+
+			const posts = await postsQuery.exec();
 			res.json(posts);
 		} catch (error) {
 			res.status(500).json({ message: error.message });
@@ -254,10 +269,8 @@ export const getUserPosts = expressAsyncHandler(
 export const getPopularAuthors = expressAsyncHandler(
 	async (req: Request, res: Response): Promise<any> => {
 		try {
-			let limit = 10;
-			if (req.query.limit) {
-				limit = parseInt(req.query.limit as string);
-			}
+			const limit = req.query.limit ? parseInt(req.query.limit as string) : 10;
+
 			const users = await Post.aggregate([
 				{
 					$group: {
@@ -325,8 +338,6 @@ export const addFollower = [
 				{ new: true, session },
 			);
 
-			console.log("userfollowed", userFollowed);
-			console.log("userFollowing", userFollowing);
 			if (!userFollowed || !userFollowing) {
 				await session.abortTransaction();
 				session.endSession();

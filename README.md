@@ -2,11 +2,9 @@
 
 ## notes
 
-- probably refactor comments to use posts/:id/comments etc
 - change to patch for update?
 - Remove todos
 - how to send better error for unique constraint violation
-- add limit to results
 - change cors crap once done
 - refresh token stuff
 - clearing cookies

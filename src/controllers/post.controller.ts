@@ -12,9 +12,16 @@ import passport from "passport";
 export const getPosts = expressAsyncHandler(
 	async (req: Request, res: Response) => {
 		try {
-			const posts = await Post.find({ published: true })
+			const postsQuery = Post.find({ published: true })
 				.populate("author", "firstName lastName")
 				.sort({ createdAt: -1 });
+
+			if (req.query.limit) {
+				const limit = parseInt(req.query.limit as string);
+				postsQuery.limit(limit);
+			}
+
+			const posts = await postsQuery.exec();
 			res.json(posts);
 		} catch (error) {
 			res.status(500).json({ message: error.message });
@@ -35,6 +42,7 @@ export const getPostById = expressAsyncHandler(
 					path: "comments",
 					populate: { path: "author", select: "firstName lastName" },
 				});
+
 			res.json(post);
 		} catch (error) {
 			res.status(500).json({ message: error.message });
@@ -68,7 +76,6 @@ export const createPost = [
 			return res.status(400).json({ errors: errors.array() });
 		}
 
-		// TODO test
 		const author = req.user as IUser;
 		if (!author) {
 			return res.status(400).json({ message: "Author is required" });
