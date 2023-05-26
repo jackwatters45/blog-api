@@ -20,9 +20,7 @@
 		"populate": "ts-node src/tools/populateDatabase"
 	},
 	"lint-staged": {
-		"*.ts": [
-			"npm run fix"
-		]
+		"*.ts": "npm run fix"
 	},
 	"keywords": [],
 	"author": "Jack Watters",

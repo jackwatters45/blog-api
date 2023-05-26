@@ -14,6 +14,7 @@ export const getPosts = expressAsyncHandler(
 		try {
 			const postsQuery = Post.find({ published: true })
 				.populate("author", "firstName lastName")
+				.populate("topic", "name")
 				.sort({ createdAt: -1 });
 
 			if (req.query.limit) {
@@ -38,6 +39,7 @@ export const getPostById = expressAsyncHandler(
 			const post = await Post.findById(req.params.id)
 				.populate("author", "firstName lastName description followers")
 				.populate("likes", "email")
+				.populate("topic", "name")
 				.populate({
 					path: "comments",
 					populate: { path: "author", select: "firstName lastName" },
@@ -315,6 +317,20 @@ export const getPopularPosts = expressAsyncHandler(
 				{
 					$unwind: {
 						path: "$author",
+						preserveNullAndEmptyArrays: true,
+					},
+				},
+				{
+					$lookup: {
+						from: "topics",
+						localField: "topic",
+						foreignField: "_id",
+						as: "topic",
+					},
+				},
+				{
+					$unwind: {
+						path: "$topic",
 						preserveNullAndEmptyArrays: true,
 					},
 				},
