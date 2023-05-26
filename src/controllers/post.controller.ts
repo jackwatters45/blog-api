@@ -284,16 +284,38 @@ export const getPopularPosts = expressAsyncHandler(
 				{
 					$match: {
 						published: true,
-						"likes.date": {
-							$gte: start,
+					},
+				},
+				{
+					$addFields: {
+						filteredLikes: {
+							$filter: {
+								input: "$likes",
+								as: "like",
+								cond: { $gte: ["$$like.date", start] },
+							},
 						},
 					},
 				},
 				{
 					$addFields: {
 						likeCount: {
-							$size: "$likes",
+							$size: "$filteredLikes",
 						},
+					},
+				},
+				{
+					$lookup: {
+						from: "users",
+						localField: "author",
+						foreignField: "_id",
+						as: "author",
+					},
+				},
+				{
+					$unwind: {
+						path: "$author",
+						preserveNullAndEmptyArrays: true,
 					},
 				},
 				{
