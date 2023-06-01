@@ -30,6 +30,32 @@ export const getPosts = expressAsyncHandler(
 	},
 );
 
+// @desc    Get all post projecting only fields necessary for preview
+// @route   GET /posts/preview
+// @access  Admin
+export const getPostsPreview = [
+	passport.authenticate("jwt", { session: false }),
+	expressAsyncHandler(async (req: Request, res: Response): Promise<any> => {
+		try {
+			const user = req.user as IUser;
+			if (user.userType !== "admin")
+				return res.status(401).json({ message: "Unauthorized" });
+
+			const posts = await Post.find(
+				{},
+				{ title: 1, updatedAt: 1, likes: 1, comments: 1 },
+			)
+				.populate("author", "firstName lastName")
+				.populate("topic", "name")
+				.sort({ createdAt: -1 });
+
+			res.json(posts);
+		} catch (error) {
+			res.status(500).json({ message: error.message });
+		}
+	}),
+];
+
 // @desc    Get post by id
 // @route   GET /posts/:id
 // @access  Public
@@ -67,7 +93,6 @@ export const createPost = [
 		.isLength({ min: 10 })
 		.withMessage("Content must be at least 100 characters long"),
 	body("topic").notEmpty().withMessage("Topic is required"),
-	body("tags").optional().isArray().withMessage("Tags must be an array"),
 	body("published")
 		.optional()
 		.isBoolean()
@@ -83,13 +108,13 @@ export const createPost = [
 			return res.status(400).json({ message: "Author is required" });
 		}
 
-		const { title, content, tags, published } = req.body;
+		const { title, content, topic, published } = req.body;
 
 		try {
 			const post = new Post({
 				title,
 				content,
-				tags,
+				topic,
 				author,
 				published,
 			});

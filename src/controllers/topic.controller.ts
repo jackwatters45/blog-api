@@ -29,8 +29,22 @@ export const getTopics = expressAsyncHandler(
 	},
 );
 
-// @desc    Get posts by topic
+// @desc    Get topic by id
 // @route   GET /topics/:id
+// @access  Public
+export const getTopicById = expressAsyncHandler(
+	async (req: Request, res: Response) => {
+		try {
+			const topic = await Topic.findById(req.params.id);
+			res.status(201).json(topic);
+		} catch (error) {
+			res.status(500).json({ message: error.message });
+		}
+	},
+);
+
+// @desc    Get posts by topic with aggregate
+// @route   GET /topics/:id/posts
 // @access  Public
 export const getPostsByTopic = expressAsyncHandler(
 	async (req: Request, res: Response) => {

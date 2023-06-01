@@ -6,6 +6,7 @@ import {
 	deleteTopic,
 	updateTopic,
 	getPopularTopics,
+	getTopicById,
 } from "../controllers/topic.controller";
 const router = express.Router();
 
@@ -15,8 +16,11 @@ router.get("/", getTopics);
 // /topics/popular
 router.get("/popular", getPopularTopics);
 
-// /topics/:id
-router.get("/:id", getPostsByTopic);
+// /topics/:id/posts
+router.get("/:id/posts", getPostsByTopic);
+
+// /topics/:id/
+router.get("/:id", getTopicById);
 
 // /topics
 router.post("/", createTopic);

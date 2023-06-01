@@ -6,6 +6,7 @@ import {
 	getPopularPosts,
 	getPostById,
 	getPosts,
+	getPostsPreview,
 	likePost,
 	searchPosts,
 	unlikePost,
@@ -26,6 +27,9 @@ router.get("/search", searchPosts);
 
 // /posts/popular
 router.get("/popular", getPopularPosts);
+
+// /posts/preview
+router.get("/preview", getPostsPreview);
 
 // /posts/:id
 router.get("/:id", getPostById);
