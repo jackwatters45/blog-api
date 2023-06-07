@@ -7,6 +7,7 @@ import { IUser } from "../models/user.model";
 import Topic from "../models/topic.model";
 import Post from "../models/post.model";
 import { Types } from "mongoose";
+import { calculateStartTime } from "./utils";
 
 // @desc    Get all topics
 // @route   GET /topics
@@ -54,6 +55,8 @@ export const getPostsByTopic = expressAsyncHandler(
 				limit = parseInt(req.query.limit as string);
 			}
 
+			const start = calculateStartTime(req.query.timeRange as string);
+
 			const topic = await Topic.findById(req.params.id);
 			const posts = await Post.aggregate([
 				{
@@ -64,11 +67,17 @@ export const getPostsByTopic = expressAsyncHandler(
 				},
 				{
 					$addFields: {
-						numberOfLikes: { $size: { $ifNull: ["$likes", []] } },
+						numberOfLikesFiltered: {
+							$filter: {
+								input: "$likes",
+								as: "like",
+								cond: { $gte: ["$$like.date", start] },
+							},
+						},
 					},
 				},
 				{
-					$sort: { numberOfLikes: -1, createdAt: -1 },
+					$sort: { numberOfLikesFiltered: -1, createdAt: -1 },
 				},
 				{
 					$limit: limit,
@@ -114,7 +123,7 @@ export const getPostsByTopic = expressAsyncHandler(
 
 // @desc    Create topic
 // @route   POST /topics
-// @access  Private
+// @access  Admin
 export const createTopic = [
 	passport.authenticate("jwt", { session: false }),
 	body("name")
@@ -129,7 +138,8 @@ export const createTopic = [
 
 		const user = req.user as IUser;
 
-		if (!user) return res.status(401).json({ message: "Unauthorized" });
+		if (user?.userType !== "admin")
+			return res.status(401).json({ message: "Unauthorized" });
 
 		try {
 			const { name } = req.body;
@@ -147,7 +157,7 @@ export const createTopic = [
 
 // @desc    Update topic
 // @route   PATCH /topics/:id
-// @access  Private
+// @access  Admin
 export const updateTopic = [
 	passport.authenticate("jwt", { session: false }),
 	body("name")
@@ -159,6 +169,11 @@ export const updateTopic = [
 		const errors = validationResult(req);
 		if (!errors.isEmpty())
 			return res.status(400).json({ errors: errors.array() });
+
+		const user = req.user as IUser;
+
+		if (user?.userType !== "admin")
+			return res.status(401).json({ message: "Unauthorized" });
 
 		try {
 			const { name } = req.body;
@@ -177,11 +192,16 @@ export const updateTopic = [
 
 // @desc    Delete topic
 // @route   DELETE /topics/:id
-// @access  Private
+// @access  Admin
 export const deleteTopic = [
 	passport.authenticate("jwt", { session: false }),
 	expressAsyncHandler(async (req: Request, res: Response): Promise<any> => {
 		try {
+			const user = req.user as IUser;
+
+			if (user?.userType !== "admin")
+				return res.status(401).json({ message: "Unauthorized" });
+
 			const topic = await Topic.findByIdAndDelete(req.params.id);
 
 			if (!topic) return res.status(404).json({ message: "Topic not found" });

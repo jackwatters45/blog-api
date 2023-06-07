@@ -8,6 +8,7 @@ import Comment from "../models/comment.model";
 import passport from "passport";
 import bcrypt from "bcryptjs";
 import { startSession } from "mongoose";
+import { calculateStartTime } from "./utils";
 
 // @desc    Get all users
 // @route   GET /users
@@ -15,7 +16,7 @@ import { startSession } from "mongoose";
 export const getUsers = expressAsyncHandler(
 	async (req: Request, res: Response) => {
 		try {
-			const usersQuery = User.find();
+			const usersQuery = User.find({}, { password: 0 });
 
 			if (req.query.limit) {
 				const limit = parseInt(req.query.limit as string);
@@ -66,7 +67,7 @@ export const getUserById = expressAsyncHandler(
 		try {
 			const limit = req.query.limit ? parseInt(req.query.limit as string) : 5;
 			const [user, posts, comments] = await Promise.all([
-				User.findById(req.params.id).populate({
+				User.findById(req.params.id, { password: 0 }).populate({
 					path: "following",
 					options: { limit },
 				}),
@@ -99,7 +100,7 @@ export const getUserById = expressAsyncHandler(
 
 // @desc    Create user
 // @route   POST /users
-// @access  Public
+// @access  Admin
 export const createUser = [
 	passport.authenticate("jwt", { session: false }),
 	body("firstName")
@@ -134,6 +135,11 @@ export const createUser = [
 		const errors = validationResult(req);
 		if (!errors.isEmpty()) {
 			return res.status(400).json({ errors: errors.array() });
+		}
+
+		const reqUser = req.user as IUser;
+		if (reqUser.userType !== "admin") {
+			return res.status(401).json({ message: "Unauthorized" });
 		}
 
 		try {
@@ -196,9 +202,13 @@ export const updateUser = [
 	expressAsyncHandler(async (req: Request, res: Response): Promise<any> => {
 		const errors = validationResult(req);
 		if (!errors.isEmpty()) {
-			console.log(errors);
-			// return res.status(400).json({ errors: errors.array() });
-			return res.status(400).json({ message: "Errors meep" });
+			return res.status(400).json({ errors: errors.array() });
+		}
+
+		const reqUser = req.user as IUser;
+		const userId = req.params.id;
+		if (String(reqUser._id) !== userId && reqUser.userType !== "admin") {
+			return res.status(401).json({ message: "Unauthorized" });
 		}
 
 		try {
@@ -223,12 +233,19 @@ export const updateUser = [
 export const deleteUser = [
 	passport.authenticate("jwt", { session: false }),
 	expressAsyncHandler(async (req: Request, res: Response): Promise<any> => {
+		const user = req.user as IUser;
+		const userId = req.params.id;
+
+		if (String(user._id) !== userId && user.userType !== "admin") {
+			return res.status(401).json({ message: "Unauthorized" });
+		}
+
 		try {
-			const user: IUser | null = await User.findByIdAndDelete(req.params.id);
-			if (!user) {
+			const deletedUser: IUser | null = await User.findByIdAndDelete(userId);
+			if (!deletedUser) {
 				return res.status(404).json({ message: "User not found" });
 			}
-			res.json(user);
+			res.json(deletedUser);
 		} catch (error) {
 			res.status(500).json({ message: error.message });
 		}
@@ -241,9 +258,12 @@ export const deleteUser = [
 export const searchUsers = expressAsyncHandler(
 	async (req: Request, res: Response): Promise<any> => {
 		try {
-			const users = await User.find({
-				$text: { $search: req.query.q as string },
-			});
+			const users = await User.find(
+				{
+					$text: { $search: req.query.q as string },
+				},
+				{ password: 0, email: 0 },
+			);
 
 			res.json(users);
 		} catch (error) {
@@ -251,25 +271,6 @@ export const searchUsers = expressAsyncHandler(
 		}
 	},
 );
-
-// @desc    Delete user by query
-// @route   DELETE /users?field=value
-// @access  Private
-export const deleteUserByQuery = [
-	passport.authenticate("jwt", { session: false }),
-	expressAsyncHandler(async (req: Request, res: Response): Promise<any> => {
-		try {
-			const query = req.query;
-			const user: IUser | null = await User.findOneAndDelete(query);
-			if (!user) {
-				return res.status(404).json({ message: "User not found" });
-			}
-			res.json(user);
-		} catch (error) {
-			res.status(500).json({ message: error.message });
-		}
-	}),
-];
 
 // @desc    Get user posts
 // @route   GET /users/:id/posts
@@ -298,27 +299,7 @@ export const getUserPosts = expressAsyncHandler(
 export const getPopularAuthors = expressAsyncHandler(
 	async (req: Request, res: Response): Promise<any> => {
 		try {
-			let start;
-			switch (req.query.timeRange) {
-				case "lastYear":
-					start = new Date();
-					start.setFullYear(start.getFullYear() - 1);
-					break;
-				case "lastMonth":
-					start = new Date();
-					start.setMonth(start.getMonth() - 1);
-					break;
-				case "lastWeek":
-					start = new Date();
-					start.setDate(start.getDate() - 7);
-					break;
-				case "today":
-					start = new Date();
-					start.setHours(0, 0, 0, 0);
-					break;
-				default:
-					start = new Date(0);
-			}
+			const start = calculateStartTime(req.query.timeRange as string);
 
 			const limit = req.query.limit ? parseInt(req.query.limit as string) : 10;
 
@@ -399,15 +380,25 @@ export const addFollower = [
 		const session = await startSession();
 		session.startTransaction();
 
+		const user = req.user as IUser;
+		if (!user) {
+			return res.status(404).json({ message: "User not found" });
+		}
+
+		const userId = user._id;
+		if (req.params.id === userId.toString()) {
+			return res.status(400).json({ message: "You can't follow yourself" });
+		}
+
 		try {
 			const userFollowed = await User.findByIdAndUpdate(
 				req.params.id,
-				{ $addToSet: { followers: (req.user as IUser)?._id } },
+				{ $addToSet: { followers: userId } },
 				{ new: true, session },
 			);
 
 			const userFollowing = await User.findByIdAndUpdate(
-				(req.user as IUser)?._id,
+				userId,
 				{ $addToSet: { following: req.params.id } },
 				{ new: true, session },
 			);
@@ -438,15 +429,25 @@ export const removeFollower = [
 		const session = await startSession();
 		session.startTransaction();
 
+		const user = req.user as IUser;
+		if (!user) {
+			return res.status(404).json({ message: "User not found" });
+		}
+
+		const userId = user._id;
+		if (req.params.id === userId.toString()) {
+			return res.status(400).json({ message: "You can't unfollow yourself" });
+		}
+
 		try {
 			const userUnfollowed = await User.findByIdAndUpdate(
 				req.params.id,
-				{ $pull: { followers: (req.user as IUser)?._id } },
+				{ $pull: { followers: userId } },
 				{ new: true, session },
 			);
 
 			const userUnfollowing = await User.findByIdAndUpdate(
-				(req.user as IUser)?._id,
+				userId,
 				{ $pull: { following: req.params.id } },
 				{ new: true, session },
 			);

@@ -2,7 +2,6 @@ import express from "express";
 import {
 	createUser,
 	deleteUser,
-	deleteUserByQuery,
 	getUserById,
 	getUsers,
 	searchUsers,
@@ -48,8 +47,5 @@ router.patch("/:id", updateUser);
 
 // /users/:id
 router.delete("/:id", deleteUser);
-
-// /users
-router.delete("/", deleteUserByQuery);
 
 export default router;

@@ -5,6 +5,7 @@ import Post from "../models/post.model";
 import { IUser } from "../models/user.model";
 import expressAsyncHandler from "express-async-handler";
 import passport from "passport";
+import { calculateStartTime } from "./utils";
 
 // @desc    Get all posts
 // @route   GET /posts
@@ -81,20 +82,21 @@ export const getPostById = expressAsyncHandler(
 // @desc    Create post
 // @route   POST /posts
 // @access  Private
-// TODO change content length to 100
 export const createPost = [
 	passport.authenticate("jwt", { session: false }),
 	body("title")
 		.trim()
-		.isLength({ min: 5 })
-		.withMessage("Title must be at least 5 characters long"),
+		.isLength({ min: 5, max: 100 })
+		.withMessage("Title must be at least 5 and less than 100 characters long"),
 	body("content")
 		.trim()
-		.isLength({ min: 10 })
-		.withMessage("Content must be at least 100 characters long"),
-	body("topic").notEmpty().withMessage("Topic is required"),
+		.isLength({ min: 250, max: 10000 })
+		.withMessage(
+			"Title must be at least 250 and less than 10000 characters long",
+		),
+	body("topic").isMongoId().withMessage("Topic must be an ObjectId"),
 	body("published")
-		.optional()
+		.notEmpty()
 		.isBoolean()
 		.withMessage("Published must be a boolean"),
 	expressAsyncHandler(async (req: Request, res: Response): Promise<any> => {
@@ -130,18 +132,20 @@ export const createPost = [
 // @route   PUT /posts/:id
 // @access  Private
 export const updatePost = [
+	passport.authenticate("jwt", { session: false }),
 	body("title")
 		.optional()
 		.trim()
-		.isLength({ min: 5 })
-		.withMessage("Title must be at least 5 characters long"),
+		.isLength({ min: 5, max: 100 })
+		.withMessage("Title must be at least 5 and less than 100 characters long"),
 	body("content")
 		.optional()
 		.trim()
-		.isLength({ min: 500 })
-		.withMessage("Content must be at least 500 characters long"),
-	body("topic").optional().notEmpty().withMessage("Topic is required"),
-	body("tags").optional().isArray().withMessage("Tags must be an array"),
+		.isLength({ min: 250, max: 10000 })
+		.withMessage(
+			"Content must be at least 250 and less than 10000 characters long",
+		),
+	body("topic").optional().isMongoId().withMessage("Topic must be an ObjectId"),
 	body("published")
 		.optional()
 		.isBoolean()
@@ -151,19 +155,25 @@ export const updatePost = [
 		if (!errors.isEmpty()) {
 			return res.status(400).json({ errors: errors.array() });
 		}
-		const { title, content, tags, published } = req.body;
+		const { title, content, topic, published } = req.body;
 		try {
-			const post = await Post.findByIdAndUpdate(
-				req.params.id,
-				{
-					title,
-					content,
-					tags,
-					published,
-				},
-				{ new: true },
-			);
-			res.json(post);
+			const post = await Post.findById(req.params.id);
+			if (!post) {
+				return res.status(404).json({ message: "Post not found" });
+			}
+
+			const user = req.user as IUser;
+			if (post.author.toString() !== user.id && user.userType !== "admin") {
+				return res.status(403).json({ message: "Unauthorized" });
+			}
+
+			post.title = title;
+			post.content = content;
+			post.topic = topic;
+			post.published = published;
+
+			const updatedPost = await post.save();
+			res.json(updatedPost);
 		} catch (error) {
 			res.status(500).json({ message: error.message });
 		}
@@ -173,21 +183,32 @@ export const updatePost = [
 // @desc    Delete post
 // @route   DELETE /posts/:id
 // @access  Private
-export const deletePost = expressAsyncHandler(
-	async (req: Request, res: Response): Promise<any> => {
+export const deletePost = [
+	passport.authenticate("jwt", { session: false }),
+	expressAsyncHandler(async (req: Request, res: Response): Promise<any> => {
 		try {
-			const post = await Post.findByIdAndDelete(req.params.id);
-
+			const user = req.user as IUser;
+			const post = await Post.findById(req.params.id);
 			if (!post) {
 				return res.status(404).json({ message: "Post not found" });
 			}
 
-			res.json(post);
+			if (post.author.toString() !== user.id && user.userType !== "admin") {
+				return res.status(403).json({ message: "Unauthorized" });
+			}
+
+			const result = await Post.findByIdAndDelete(req.params.id);
+
+			if (!result) {
+				return res.status(404).json({ message: "Delete failed" });
+			}
+
+			res.json(result);
 		} catch (error) {
 			res.status(500).json({ message: error.message });
 		}
-	},
-);
+	}),
+];
 
 // @desc    Like post
 // @route   PUT /posts/:id/like
@@ -201,15 +222,25 @@ export const likePost = [
 		}
 
 		try {
-			const post = await Post.findByIdAndUpdate(
-				req.params.id,
-				{ $addToSet: { likes: { userId: user._id, date: new Date() } } },
-				{ new: true },
+			const postId = req.params.id;
+			const post = await Post.findById(postId);
+			if (!post) {
+				return res.status(404).json({ message: "Post not found" });
+			}
+
+			const hasLiked = post.likes.some(
+				(like) => like.userId.toString() === user._id.toString(),
 			);
+			if (hasLiked) {
+				return res
+					.status(400)
+					.json({ message: "You have already liked this post" });
+			}
 
-			if (!post) return res.status(404).json({ message: "Post not found" });
+			post.likes.push({ userId: user._id, date: new Date() });
+			const updatedPost = await post.save();
 
-			res.json(post);
+			res.json(updatedPost);
 		} catch (error) {
 			res.status(500).json({ message: error.message });
 		}
@@ -227,36 +258,46 @@ export const unlikePost = [
 			return res.status(401).json({ message: "Unauthorized" });
 		}
 
-		console.log(user._id);
 		try {
-			const post = await Post.findByIdAndUpdate(
-				req.params.id,
-				{ $pull: { likes: { userId: user._id } } },
-				{ new: true },
-			);
-
+			const postId = req.params.id;
+			const post = await Post.findById(postId);
 			if (!post) {
 				return res.status(404).json({ message: "Post not found" });
 			}
 
-			res.json(post);
+			const hasLiked = post.likes.some(
+				(like) => like.userId.toString() === user._id.toString(),
+			);
+			if (!hasLiked) {
+				return res
+					.status(400)
+					.json({ message: "You have not liked this post yet" });
+			}
+
+			post.likes = post.likes.filter(
+				(like) => like.userId.toString() !== user._id.toString(),
+			);
+			const updatedPost = await post.save();
+
+			res.json(updatedPost);
 		} catch (error) {
 			res.status(500).json({ message: error.message });
 		}
 	}),
 ];
+
 // @desc		Get number of likes
 // @route		GET /posts/:id/likes
 // @access		Public
 export const getLikes = expressAsyncHandler(
 	async (req: Request, res: Response): Promise<any> => {
 		try {
-			const post = await Post.findById(req.params.id);
+			const post = await Post.findById(req.params.id).select("likes");
 			if (!post) {
 				return res.status(404).json({ message: "Post not found" });
 			}
 
-			res.json(post.likes?.length);
+			res.json(post.likes.length);
 		} catch (error) {
 			res.status(500).json({ message: error.message });
 		}
@@ -285,27 +326,7 @@ export const searchPosts = expressAsyncHandler(
 export const getPopularPosts = expressAsyncHandler(
 	async (req: Request, res: Response): Promise<any> => {
 		try {
-			let start;
-			switch (req.query.timeRange) {
-				case "lastYear":
-					start = new Date();
-					start.setFullYear(start.getFullYear() - 1);
-					break;
-				case "lastMonth":
-					start = new Date();
-					start.setMonth(start.getMonth() - 1);
-					break;
-				case "lastWeek":
-					start = new Date();
-					start.setDate(start.getDate() - 7);
-					break;
-				case "today":
-					start = new Date();
-					start.setHours(0, 0, 0, 0);
-					break;
-				default:
-					start = new Date(0);
-			}
+			const start = calculateStartTime(req.query.timeRange as string);
 
 			const postsQuery = Post.aggregate([
 				{
