@@ -1,6 +1,13 @@
 import { Schema, model, Types, Document } from "mongoose";
 // import bcrypt from "bcryptjs";
 
+interface DeletedData {
+	deletedBy: Types.ObjectId | null;
+	deletedAt: Date;
+	email: string;
+	username: string;
+	followerCount: number;
+}
 export interface IUser extends Document {
 	_id: Types.ObjectId;
 	firstName: string;
@@ -8,14 +15,16 @@ export interface IUser extends Document {
 	fullName: string;
 	email: string;
 	username: string;
-	url: string;
 	password: string;
 	createdAt: Date;
 	updatedAt: Date;
 	userType: string;
 	followers: Types.ObjectId[];
 	following: Types.ObjectId[];
+	isDeleted: boolean;
 	description?: string;
+	deletedData?: DeletedData;
+	avatarUrl?: string;
 }
 
 const UserSchema = new Schema<IUser>(
@@ -34,17 +43,22 @@ const UserSchema = new Schema<IUser>(
 		},
 		followers: [{ type: Types.ObjectId, ref: "User", default: [] }],
 		following: [{ type: Types.ObjectId, ref: "User", default: [] }],
+		isDeleted: { type: Boolean, default: false },
 		description: { type: String, trim: true },
+		deletedData: {
+			deletedBy: { type: Types.ObjectId, ref: "User" },
+			deletedAt: { type: Date },
+			email: { type: String, trim: true },
+			username: { type: String, trim: true },
+			followerCount: { type: Number },
+		},
+		avatarUrl: { type: String, trim: true },
 	},
 	{ timestamps: true },
 );
 
 UserSchema.virtual("fullName").get(function (this: IUser) {
 	return `${this.firstName} ${this.lastName}`;
-});
-
-UserSchema.virtual("url").get(function (this: IUser) {
-	return `https://.blogName.com/users/${this.username}`;
 });
 
 // TODO

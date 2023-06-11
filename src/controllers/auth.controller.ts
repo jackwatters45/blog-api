@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import expressAsyncHandler from "express-async-handler";
 import { Request, Response, NextFunction } from "express";
 import { body, validationResult } from "express-validator";
@@ -6,6 +5,8 @@ import bcrypt from "bcryptjs";
 import User, { IUser } from "../models/user.model";
 import passport from "passport";
 import jwt from "jsonwebtoken";
+import uploadToCloudinary from "../utils/uploadToCloudinary";
+import resizeAvatar from "../utils/resizeImage";
 
 const handleUserLogin = (res: Response, user: IUser) => {
 	const payload = {
@@ -19,8 +20,6 @@ const handleUserLogin = (res: Response, user: IUser) => {
 		expiresIn: "1h",
 	});
 
-	// TODO secure: true for production
-	res.locals.user = user;
 	res.cookie("jwt", token, {
 		maxAge: 3600000,
 		httpOnly: true,
@@ -54,17 +53,25 @@ export const postSignUp = [
 			return true;
 		}),
 	expressAsyncHandler(
-		async (req: Request, res: Response, next: NextFunction): Promise<any> => {
+		async (req: Request, res: Response, next: NextFunction) => {
 			try {
 				const errors = validationResult(req);
-				if (!errors.isEmpty())
-					return res.status(400).json({ errors: errors.array() });
+				if (!errors.isEmpty()) {
+					res.status(400).json({ errors: errors.array() });
+					return;
+				}
 
 				const { firstName, lastName, email, username } = req.body;
 
+				let avatarUrl = "";
+				const resizedAvatar = await resizeAvatar(req.file);
+				if (resizedAvatar) avatarUrl = await uploadToCloudinary(resizedAvatar);
+
 				const userExists = await User.findOne({ email });
-				if (userExists)
-					return res.status(400).json({ email: "Email already exists" });
+				if (userExists) {
+					res.status(400).json({ email: "Email already exists" });
+					return;
+				}
 
 				const hashedPassword = await bcrypt.hash(req.body.password, 10);
 				const user = new User({
@@ -73,6 +80,7 @@ export const postSignUp = [
 					password: hashedPassword,
 					email,
 					username,
+					avatarUrl,
 				});
 				const result = await user.save();
 				if (!result) throw new Error("Could not save user");
@@ -92,11 +100,13 @@ export const postLogin = [
 	body("username").notEmpty().trim(),
 	body("password").notEmpty().trim(),
 	expressAsyncHandler(
-		async (req: Request, res: Response, next: NextFunction): Promise<any> => {
+		async (req: Request, res: Response, next: NextFunction) => {
 			const errors = validationResult(req);
 
-			if (!errors.isEmpty())
-				return res.status(400).json({ errors: errors.array() });
+			if (!errors.isEmpty()) {
+				res.status(400).json({ errors: errors.array() });
+				return;
+			}
 
 			passport.authenticate(
 				"local",
@@ -104,8 +114,10 @@ export const postLogin = [
 				function (err: Error, user: IUser) {
 					if (err) return next(err);
 
-					if (!user)
-						return res.status(404).json({ emailNotFound: "Email not found" });
+					if (!user) {
+						res.status(404).json({ emailNotFound: "Email not found" });
+						return;
+					}
 
 					req.logIn(user, (err) => {
 						if (err) return next(err);
@@ -123,13 +135,11 @@ export const postLogin = [
 // @access  Public
 export const postLogout = (req: Request, res: Response, next: NextFunction) => {
 	res.clearCookie("jwt", {
-		maxAge: 3600000,
 		httpOnly: true,
 		secure: true,
 		sameSite: "none",
 	});
 	res.clearCookie("connect.sid", {
-		maxAge: 1000 * 60 * 60,
 		secure: true,
 		sameSite: "none",
 	});
@@ -139,3 +149,34 @@ export const postLogout = (req: Request, res: Response, next: NextFunction) => {
 		res.status(200).json({ message: "User logged out successfully" });
 	});
 };
+
+// @desc    Get current user
+// @route   GET /me
+// @access  Private
+export const getCurrentUser = expressAsyncHandler(
+	async (req: Request, res: Response) => {
+		const token = req.cookies.jwt;
+		if (!token) {
+			res.status(200).json({ isAuthenticated: false });
+			return;
+		}
+
+		const jwtSecret = process.env.JWT_SECRET;
+		if (!jwtSecret) throw new Error("JWT Secret not defined");
+
+		try {
+			const decoded = jwt.verify(token, jwtSecret) as { id: string };
+			const userId = decoded.id;
+
+			const user = await User.findById(userId, { password: 0 });
+			if (!user) {
+				res.status(404).json({ isAuthenticated: false });
+				return;
+			}
+
+			res.status(200).json({ user, isAuthenticated: true });
+		} catch (err) {
+			res.status(401).json({ isAuthenticated: false });
+		}
+	},
+);

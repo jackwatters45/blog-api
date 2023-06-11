@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import { body, validationResult } from "express-validator";
 import { Request, Response } from "express";
 import Post from "../models/post.model";
@@ -14,17 +13,23 @@ export const getPosts = expressAsyncHandler(
 	async (req: Request, res: Response) => {
 		try {
 			const postsQuery = Post.find({ published: true })
-				.populate("author", "firstName lastName")
+				.populate("author", "firstName lastName isDeleted")
 				.populate("topic", "name")
 				.sort({ createdAt: -1 });
 
+			if (req.query.offset) {
+				const offset = parseInt(req.query.offset as string);
+				postsQuery.skip(offset);
+			}
 			if (req.query.limit) {
 				const limit = parseInt(req.query.limit as string);
 				postsQuery.limit(limit);
 			}
 
+			const total = await Post.countDocuments({ published: true });
+
 			const posts = await postsQuery.exec();
-			res.json(posts);
+			res.json({ posts, meta: { total } });
 		} catch (error) {
 			res.status(500).json({ message: error.message });
 		}
@@ -36,21 +41,25 @@ export const getPosts = expressAsyncHandler(
 // @access  Admin
 export const getPostsPreview = [
 	passport.authenticate("jwt", { session: false }),
-	expressAsyncHandler(async (req: Request, res: Response): Promise<any> => {
+	expressAsyncHandler(async (req: Request, res: Response) => {
 		try {
+			const total = await Post.countDocuments();
+
 			const user = req.user as IUser;
-			if (user.userType !== "admin")
-				return res.status(401).json({ message: "Unauthorized" });
+			if (user.userType !== "admin") {
+				res.status(401).json({ message: "Unauthorized" });
+				return;
+			}
 
 			const posts = await Post.find(
 				{},
 				{ title: 1, updatedAt: 1, likes: 1, comments: 1 },
 			)
-				.populate("author", "firstName lastName")
+				.populate("author", "firstName lastName isDeleted")
 				.populate("topic", "name")
 				.sort({ createdAt: -1 });
 
-			res.json(posts);
+			res.json({ posts, meta: { total } });
 		} catch (error) {
 			res.status(500).json({ message: error.message });
 		}
@@ -64,12 +73,15 @@ export const getPostById = expressAsyncHandler(
 	async (req: Request, res: Response) => {
 		try {
 			const post = await Post.findById(req.params.id)
-				.populate("author", "firstName lastName description followers")
+				.populate(
+					"author",
+					"firstName lastName description followers isDeleted avatarUrl",
+				)
 				.populate("likes", "email")
 				.populate("topic", "name")
 				.populate({
 					path: "comments",
-					populate: { path: "author", select: "firstName lastName" },
+					populate: { path: "author", select: "firstName lastName isDeleted" },
 				});
 
 			res.json(post);
@@ -99,15 +111,17 @@ export const createPost = [
 		.notEmpty()
 		.isBoolean()
 		.withMessage("Published must be a boolean"),
-	expressAsyncHandler(async (req: Request, res: Response): Promise<any> => {
+	expressAsyncHandler(async (req: Request, res: Response) => {
 		const errors = validationResult(req);
 		if (!errors.isEmpty()) {
-			return res.status(400).json({ errors: errors.array() });
+			res.status(400).json({ errors: errors.array() });
+			return;
 		}
 
 		const author = req.user as IUser;
 		if (!author) {
-			return res.status(400).json({ message: "Author is required" });
+			res.status(400).json({ message: "Author is required" });
+			return;
 		}
 
 		const { title, content, topic, published } = req.body;
@@ -150,21 +164,24 @@ export const updatePost = [
 		.optional()
 		.isBoolean()
 		.withMessage("Published must be a boolean"),
-	expressAsyncHandler(async (req: Request, res: Response): Promise<any> => {
+	expressAsyncHandler(async (req: Request, res: Response) => {
 		const errors = validationResult(req);
 		if (!errors.isEmpty()) {
-			return res.status(400).json({ errors: errors.array() });
+			res.status(400).json({ errors: errors.array() });
+			return;
 		}
 		const { title, content, topic, published } = req.body;
 		try {
 			const post = await Post.findById(req.params.id);
 			if (!post) {
-				return res.status(404).json({ message: "Post not found" });
+				res.status(404).json({ message: "Post not found" });
+				return;
 			}
 
 			const user = req.user as IUser;
 			if (post.author.toString() !== user.id && user.userType !== "admin") {
-				return res.status(403).json({ message: "Unauthorized" });
+				res.status(403).json({ message: "Unauthorized" });
+				return;
 			}
 
 			post.title = title;
@@ -185,22 +202,25 @@ export const updatePost = [
 // @access  Private
 export const deletePost = [
 	passport.authenticate("jwt", { session: false }),
-	expressAsyncHandler(async (req: Request, res: Response): Promise<any> => {
+	expressAsyncHandler(async (req: Request, res: Response) => {
 		try {
 			const user = req.user as IUser;
 			const post = await Post.findById(req.params.id);
 			if (!post) {
-				return res.status(404).json({ message: "Post not found" });
+				res.status(404).json({ message: "Post not found" });
+				return;
 			}
 
 			if (post.author.toString() !== user.id && user.userType !== "admin") {
-				return res.status(403).json({ message: "Unauthorized" });
+				res.status(403).json({ message: "Unauthorized" });
+				return;
 			}
 
 			const result = await Post.findByIdAndDelete(req.params.id);
 
 			if (!result) {
-				return res.status(404).json({ message: "Delete failed" });
+				res.status(404).json({ message: "Delete failed" });
+				return;
 			}
 
 			res.json(result);
@@ -215,26 +235,27 @@ export const deletePost = [
 // @access  Private
 export const likePost = [
 	passport.authenticate("jwt", { session: false }),
-	expressAsyncHandler(async (req: Request, res: Response): Promise<any> => {
+	expressAsyncHandler(async (req: Request, res: Response) => {
 		const user = req.user as IUser;
 		if (!user) {
-			return res.status(401).json({ message: "Unauthorized" });
+			res.status(401).json({ message: "Unauthorized" });
+			return;
 		}
 
 		try {
 			const postId = req.params.id;
 			const post = await Post.findById(postId);
 			if (!post) {
-				return res.status(404).json({ message: "Post not found" });
+				res.status(404).json({ message: "Post not found" });
+				return;
 			}
 
 			const hasLiked = post.likes.some(
 				(like) => like.userId.toString() === user._id.toString(),
 			);
 			if (hasLiked) {
-				return res
-					.status(400)
-					.json({ message: "You have already liked this post" });
+				res.status(400).json({ message: "You have already liked this post" });
+				return;
 			}
 
 			post.likes.push({ userId: user._id, date: new Date() });
@@ -252,26 +273,27 @@ export const likePost = [
 // @access  Private
 export const unlikePost = [
 	passport.authenticate("jwt", { session: false }),
-	expressAsyncHandler(async (req: Request, res: Response): Promise<any> => {
+	expressAsyncHandler(async (req: Request, res: Response) => {
 		const user = req.user as IUser;
 		if (!user) {
-			return res.status(401).json({ message: "Unauthorized" });
+			res.status(401).json({ message: "Unauthorized" });
+			return;
 		}
 
 		try {
 			const postId = req.params.id;
 			const post = await Post.findById(postId);
 			if (!post) {
-				return res.status(404).json({ message: "Post not found" });
+				res.status(404).json({ message: "Post not found" });
+				return;
 			}
 
 			const hasLiked = post.likes.some(
 				(like) => like.userId.toString() === user._id.toString(),
 			);
 			if (!hasLiked) {
-				return res
-					.status(400)
-					.json({ message: "You have not liked this post yet" });
+				res.status(400).json({ message: "You have not liked this post yet" });
+				return;
 			}
 
 			post.likes = post.likes.filter(
@@ -290,11 +312,12 @@ export const unlikePost = [
 // @route		GET /posts/:id/likes
 // @access		Public
 export const getLikes = expressAsyncHandler(
-	async (req: Request, res: Response): Promise<any> => {
+	async (req: Request, res: Response) => {
 		try {
 			const post = await Post.findById(req.params.id).select("likes");
 			if (!post) {
-				return res.status(404).json({ message: "Post not found" });
+				res.status(404).json({ message: "Post not found" });
+				return;
 			}
 
 			res.json(post.likes.length);
@@ -308,7 +331,7 @@ export const getLikes = expressAsyncHandler(
 // @route   GET /posts/search
 // @access  Public
 export const searchPosts = expressAsyncHandler(
-	async (req: Request, res: Response): Promise<any> => {
+	async (req: Request, res: Response) => {
 		try {
 			const posts = await Post.find({
 				$text: { $search: req.query.q as string },
@@ -324,11 +347,15 @@ export const searchPosts = expressAsyncHandler(
 // @route   GET /posts/popular
 // @access  Public
 export const getPopularPosts = expressAsyncHandler(
-	async (req: Request, res: Response): Promise<any> => {
+	async (req: Request, res: Response) => {
 		try {
 			const start = calculateStartTime(req.query.timeRange as string);
 
-			const postsQuery = Post.aggregate([
+			const total = await Post.countDocuments({
+				published: true,
+			});
+
+			let postsQuery = Post.aggregate([
 				{
 					$match: {
 						published: true,
@@ -347,9 +374,7 @@ export const getPopularPosts = expressAsyncHandler(
 				},
 				{
 					$addFields: {
-						likeCount: {
-							$size: "$filteredLikes",
-						},
+						likeCount: { $size: "$filteredLikes" },
 					},
 				},
 				{
@@ -387,6 +412,54 @@ export const getPopularPosts = expressAsyncHandler(
 				},
 			]);
 
+			if (req.query.offset) {
+				const offset = parseInt(req.query.offset as string);
+				postsQuery = postsQuery.skip(offset);
+			}
+
+			if (req.query.limit) {
+				const limit = parseInt(req.query.limit as string);
+				postsQuery = postsQuery.limit(limit);
+			}
+
+			const posts = await postsQuery.exec();
+
+			res.json({ posts, meta: { total } }).status(201);
+		} catch (error) {
+			res.status(500).json({ message: error.message });
+		}
+	},
+);
+
+// @desc    Get posts by users that the current user follows
+// @route   GET /posts/following
+// @access  Private
+export const getFollowingPosts = [
+	passport.authenticate("jwt", { session: false }),
+	expressAsyncHandler(async (req: Request, res: Response) => {
+		const user = req.user as IUser;
+		if (!user) {
+			res.status(401).json({ message: "Unauthorized" });
+			return;
+		}
+
+		try {
+			const total = await Post.countDocuments({
+				published: true,
+				author: { $in: user.following },
+			});
+			const postsQuery = Post.find({
+				published: true,
+				author: { $in: user.following },
+			})
+				.populate("author", "firstName lastName isDeleted")
+				.populate("topic", "name")
+				.sort({ createdAt: -1 });
+
+			if (req.query.offset) {
+				const offset = parseInt(req.query.offset as string);
+				postsQuery.skip(offset);
+			}
 			if (req.query.limit) {
 				const limit = parseInt(req.query.limit as string);
 				postsQuery.limit(limit);
@@ -394,9 +467,15 @@ export const getPopularPosts = expressAsyncHandler(
 
 			const posts = await postsQuery.exec();
 
-			res.json(posts);
+			if (!posts) {
+				res.status(404).json({ message: "No posts found" });
+				return;
+			}
+
+			res.json({ posts, meta: { total } });
 		} catch (error) {
-			res.status(500).json({ message: error.message });
+			console.error(error);
+			res.status(500).json({ message: "Server Error" });
 		}
-	},
-);
+	}),
+];

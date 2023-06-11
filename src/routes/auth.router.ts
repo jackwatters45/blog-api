@@ -3,6 +3,7 @@ import {
 	postLogout,
 	postLogin,
 	postSignUp,
+	getCurrentUser,
 } from "../controllers/auth.controller";
 
 const router = express.Router();
@@ -15,5 +16,8 @@ router.post("/signup", postSignUp);
 
 // /logout
 router.post("/logout", postLogout);
+
+// /me
+router.get("/me", getCurrentUser);
 
 export default router;

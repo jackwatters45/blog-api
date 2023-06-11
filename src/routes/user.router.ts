@@ -11,6 +11,9 @@ import {
 	addFollower,
 	removeFollower,
 	getUsersPreviewData,
+	getDeletedUserById,
+	getUserFollowing,
+	updateUserPassword,
 } from "../controllers/user.controller";
 
 const router = express.Router();
@@ -33,6 +36,15 @@ router.put("/:id/unfollow", removeFollower);
 // /users/:id/posts
 router.get("/:id/posts", getUserPosts);
 
+// /users/:id/deleted
+router.get("/:id/deleted", getDeletedUserById);
+
+// /users/:id/followers
+router.get("/:id/following", getUserFollowing);
+
+// /users/:id/password
+router.put("/:id/password", updateUserPassword);
+
 // /users
 router.get("/", getUsers);
 
@@ -42,10 +54,10 @@ router.get("/:id", getUserById);
 // /users
 router.post("/", createUser);
 
-// /users/:id
-router.patch("/:id", updateUser);
+// /users/:id/delete
+router.patch("/:id/delete", deleteUser);
 
 // /users/:id
-router.delete("/:id", deleteUser);
+router.patch("/:id", updateUser);
 
 export default router;

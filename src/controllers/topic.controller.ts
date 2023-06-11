@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import { body, validationResult } from "express-validator";
 import { Request, Response } from "express";
 import expressAsyncHandler from "express-async-handler";
@@ -58,7 +57,13 @@ export const getPostsByTopic = expressAsyncHandler(
 			const start = calculateStartTime(req.query.timeRange as string);
 
 			const topic = await Topic.findById(req.params.id);
-			const posts = await Post.aggregate([
+
+			const total = await Post.countDocuments({
+				topic: new Types.ObjectId(req.params.id),
+				published: true,
+			});
+
+			let postsQuery = Post.aggregate([
 				{
 					$match: {
 						topic: new Types.ObjectId(req.params.id),
@@ -114,7 +119,19 @@ export const getPostsByTopic = expressAsyncHandler(
 				},
 			]);
 
-			res.status(201).json({ posts, topic });
+			if (req.query.offset) {
+				const offset = parseInt(req.query.offset as string);
+				postsQuery = postsQuery.skip(offset);
+			}
+
+			if (req.query.limit) {
+				const limit = parseInt(req.query.limit as string);
+				postsQuery = postsQuery.limit(limit);
+			}
+
+			const posts = await postsQuery.exec();
+
+			res.status(201).json({ posts, topic, meta: { total } });
 		} catch (error) {
 			res.status(500).json({ message: error.message });
 		}
@@ -131,15 +148,19 @@ export const createTopic = [
 		.isLength({ min: 1 })
 		.withMessage("Topic name must be at least 1 character long"),
 
-	expressAsyncHandler(async (req: Request, res: Response): Promise<any> => {
+	expressAsyncHandler(async (req: Request, res: Response) => {
 		const errors = validationResult(req);
-		if (!errors.isEmpty())
-			return res.status(400).json({ errors: errors.array() });
+		if (!errors.isEmpty()) {
+			res.status(400).json({ errors: errors.array() });
+			return;
+		}
 
 		const user = req.user as IUser;
 
-		if (user?.userType !== "admin")
-			return res.status(401).json({ message: "Unauthorized" });
+		if (user?.userType !== "admin") {
+			res.status(401).json({ message: "Unauthorized" });
+			return;
+		}
 
 		try {
 			const { name } = req.body;
@@ -165,15 +186,19 @@ export const updateTopic = [
 		.isLength({ min: 1 })
 		.withMessage("Topic name must be at least 1 character long"),
 
-	expressAsyncHandler(async (req: Request, res: Response): Promise<any> => {
+	expressAsyncHandler(async (req: Request, res: Response) => {
 		const errors = validationResult(req);
-		if (!errors.isEmpty())
-			return res.status(400).json({ errors: errors.array() });
+		if (!errors.isEmpty()) {
+			res.status(400).json({ errors: errors.array() });
+			return;
+		}
 
 		const user = req.user as IUser;
 
-		if (user?.userType !== "admin")
-			return res.status(401).json({ message: "Unauthorized" });
+		if (user?.userType !== "admin") {
+			res.status(401).json({ message: "Unauthorized" });
+			return;
+		}
 
 		try {
 			const { name } = req.body;
@@ -195,16 +220,21 @@ export const updateTopic = [
 // @access  Admin
 export const deleteTopic = [
 	passport.authenticate("jwt", { session: false }),
-	expressAsyncHandler(async (req: Request, res: Response): Promise<any> => {
+	expressAsyncHandler(async (req: Request, res: Response) => {
 		try {
 			const user = req.user as IUser;
 
-			if (user?.userType !== "admin")
-				return res.status(401).json({ message: "Unauthorized" });
+			if (user?.userType !== "admin") {
+				res.status(401).json({ message: "Unauthorized" });
+				return;
+			}
 
 			const topic = await Topic.findByIdAndDelete(req.params.id);
 
-			if (!topic) return res.status(404).json({ message: "Topic not found" });
+			if (!topic) {
+				res.status(404).json({ message: "Topic not found" });
+				return;
+			}
 
 			res.status(201).json(topic);
 		} catch (error) {
@@ -217,7 +247,7 @@ export const deleteTopic = [
 // @route   GET /topics/popular
 // @access  Public
 export const getPopularTopics = expressAsyncHandler(
-	async (req: Request, res: Response): Promise<any> => {
+	async (req: Request, res: Response) => {
 		try {
 			let limit = 10; // default limit
 			if (req.query.limit) {

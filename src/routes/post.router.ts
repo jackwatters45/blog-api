@@ -2,6 +2,7 @@ import express from "express";
 import {
 	createPost,
 	deletePost,
+	getFollowingPosts,
 	getLikes,
 	getPopularPosts,
 	getPostById,
@@ -30,6 +31,9 @@ router.get("/popular", getPopularPosts);
 
 // /posts/preview
 router.get("/preview", getPostsPreview);
+
+// /posts/following
+router.get("/following", getFollowingPosts);
 
 // /posts/:id
 router.get("/:id", getPostById);

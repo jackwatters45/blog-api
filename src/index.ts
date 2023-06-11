@@ -11,6 +11,7 @@ import configProdMiddleware from "./middleware/prodConfig";
 import configDb from "./config/database";
 import configRoutes from "./routes";
 import configErrorMiddleware from "./middleware/errorConfig";
+import configCloudinary from "./config/cloudinary";
 
 dotenv.config();
 
@@ -21,6 +22,7 @@ configAuthMiddleware(app);
 configOtherMiddleware(app);
 configProdMiddleware(app);
 configDb();
+configCloudinary();
 
 // Config Routes
 configRoutes(app);

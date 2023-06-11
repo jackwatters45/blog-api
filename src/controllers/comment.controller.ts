@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import { body, validationResult } from "express-validator";
 import { Request, Response } from "express";
 import Comment from "../models/comment.model";
@@ -59,16 +58,18 @@ export const createComment = [
 		.isLength({ min: 1 })
 		.withMessage("Content must be at least 1 character long"),
 
-	expressAsyncHandler(async (req: Request, res: Response): Promise<any> => {
+	expressAsyncHandler(async (req: Request, res: Response) => {
 		const errors = validationResult(req);
 		if (!errors.isEmpty()) {
-			return res.status(400).json({ errors: errors.array() });
+			res.status(400).json({ errors: errors.array() });
+			return;
 		}
 
 		const user = req.user as IUser;
 
 		if (!user) {
-			return res.status(401).json({ message: "Unauthorized" });
+			res.status(401).json({ message: "Unauthorized" });
+			return;
 		}
 
 		const author = user._id;
@@ -87,7 +88,7 @@ export const createComment = [
 
 			const newComment = await comment.save();
 
-			const updatedPost = await Post.findByIdAndUpdate(
+			await Post.findByIdAndUpdate(
 				post,
 				{
 					$push: { comments: newComment._id },
@@ -98,8 +99,6 @@ export const createComment = [
 			await session.commitTransaction();
 			session.endSession();
 
-			console.log(newComment);
-			console.log(updatedPost);
 			res.status(201).status(201).json(newComment);
 		} catch (error) {
 			await session.abortTransaction();
@@ -121,30 +120,33 @@ export const updateComment = [
 		.isLength({ min: 1 })
 		.withMessage("Content must be at least 1 character long"),
 
-	expressAsyncHandler(async (req: Request, res: Response): Promise<any> => {
+	expressAsyncHandler(async (req: Request, res: Response) => {
 		const errors = validationResult(req);
 		if (!errors.isEmpty()) {
-			return res.status(400).json({ errors: errors.array() });
+			res.status(400).json({ errors: errors.array() });
+			return;
 		}
 
 		const user = req.user as IUser;
 		if (!user) {
-			return res.status(401).json({ message: "Unauthorized" });
+			res.status(401).json({ message: "Unauthorized" });
+			return;
 		}
 
 		try {
 			const comment = await Comment.findById(req.params.id);
 
 			if (!comment) {
-				return res.status(404).json({ message: "Comment not found" });
+				res.status(404).json({ message: "Comment not found" });
+				return;
 			}
 
 			if (comment.author.toString() !== user._id.toString()) {
-				return res.status(403).json({ message: "Not authorized" });
+				res.status(403).json({ message: "Not authorized" });
+				return;
 			}
-			const { content } = req.body;
 
-			comment.content = content;
+			comment.content = req.body.content;
 			await comment.save();
 
 			res.status(200).json(comment);
@@ -159,22 +161,25 @@ export const updateComment = [
 // @access  Private
 export const deleteComment = [
 	passport.authenticate("jwt", { session: false }),
-	expressAsyncHandler(async (req: Request, res: Response): Promise<any> => {
+	expressAsyncHandler(async (req: Request, res: Response) => {
 		const user = req.user as IUser;
 
 		if (!user) {
-			return res.status(401).json({ message: "Unauthorized" });
+			res.status(401).json({ message: "Unauthorized" });
+			return;
 		}
 
 		try {
 			const comment = await Comment.findById(req.params.id);
 
 			if (!comment) {
-				return res.status(404).json({ message: "Comment not found" });
+				res.status(404).json({ message: "Comment not found" });
+				return;
 			}
 
 			if (comment.author.toString() !== user._id.toString()) {
-				return res.status(403).json({ message: "Not authorized" });
+				res.status(403).json({ message: "Not authorized" });
+				return;
 			}
 
 			await Comment.findByIdAndDelete(req.params.id);
