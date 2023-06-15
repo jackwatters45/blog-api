@@ -6,7 +6,7 @@ import { IUser } from "../models/user.model";
 import Topic from "../models/topic.model";
 import Post from "../models/post.model";
 import { Types } from "mongoose";
-import { calculateStartTime } from "./utils";
+import { calculateStartTime } from "../utils/calculateStartTime";
 
 // @desc    Get all topics
 // @route   GET /topics
@@ -22,7 +22,13 @@ export const getTopics = expressAsyncHandler(
 			}
 
 			const topics = await topicsQuery.exec();
-			res.status(201).json(topics);
+
+			if (topics.length === 0) {
+				res.status(404).json({ message: "No topics found" });
+				return;
+			}
+
+			res.status(200).json(topics);
 		} catch (error) {
 			res.status(500).json({ message: error.message });
 		}
@@ -36,7 +42,13 @@ export const getTopicById = expressAsyncHandler(
 	async (req: Request, res: Response) => {
 		try {
 			const topic = await Topic.findById(req.params.id);
-			res.status(201).json(topic);
+
+			if (!topic) {
+				res.status(404).json({ message: "Topic not found" });
+				return;
+			}
+
+			res.status(200).json(topic);
 		} catch (error) {
 			res.status(500).json({ message: error.message });
 		}
@@ -49,7 +61,7 @@ export const getTopicById = expressAsyncHandler(
 export const getPostsByTopic = expressAsyncHandler(
 	async (req: Request, res: Response) => {
 		try {
-			let limit = 100; // default limit
+			let limit = 100;
 			if (req.query.limit) {
 				limit = parseInt(req.query.limit as string);
 			}
@@ -57,6 +69,11 @@ export const getPostsByTopic = expressAsyncHandler(
 			const start = calculateStartTime(req.query.timeRange as string);
 
 			const topic = await Topic.findById(req.params.id);
+
+			if (!topic) {
+				res.status(404).json({ message: "Topic not found" });
+				return;
+			}
 
 			const total = await Post.countDocuments({
 				topic: new Types.ObjectId(req.params.id),
@@ -131,7 +148,12 @@ export const getPostsByTopic = expressAsyncHandler(
 
 			const posts = await postsQuery.exec();
 
-			res.status(201).json({ posts, topic, meta: { total } });
+			if (posts.length === 0) {
+				res.status(404).json({ message: "No posts found" });
+				return;
+			}
+
+			res.status(200).json({ posts, topic, meta: { total } });
 		} catch (error) {
 			res.status(500).json({ message: error.message });
 		}
@@ -156,22 +178,25 @@ export const createTopic = [
 		}
 
 		const user = req.user as IUser;
+		if (!user) {
+			res.status(401).json({ message: "User not logged in" });
+			return;
+		}
 
 		if (user?.userType !== "admin") {
-			res.status(401).json({ message: "Unauthorized" });
+			res.status(403).json({ message: "Unauthorized" });
 			return;
 		}
 
 		try {
 			const { name } = req.body;
-			const topic = new Topic({
-				name,
-			});
+			const topic = new Topic({ name });
 
-			const newTopic = await topic.save();
-			res.status(201).json(newTopic);
+			await topic.save();
+
+			res.status(201).json(topic);
 		} catch (error) {
-			res.status(400).json({ message: error.message });
+			res.status(500).json({ message: error.message });
 		}
 	}),
 ];
@@ -185,7 +210,6 @@ export const updateTopic = [
 		.trim()
 		.isLength({ min: 1 })
 		.withMessage("Topic name must be at least 1 character long"),
-
 	expressAsyncHandler(async (req: Request, res: Response) => {
 		const errors = validationResult(req);
 		if (!errors.isEmpty()) {
@@ -194,9 +218,13 @@ export const updateTopic = [
 		}
 
 		const user = req.user as IUser;
+		if (!user) {
+			res.status(401).json({ message: "User not logged in" });
+			return;
+		}
 
 		if (user?.userType !== "admin") {
-			res.status(401).json({ message: "Unauthorized" });
+			res.status(403).json({ message: "Unauthorized" });
 			return;
 		}
 
@@ -210,7 +238,7 @@ export const updateTopic = [
 
 			res.status(201).json(topic);
 		} catch (error) {
-			res.status(400).json({ message: error.message });
+			res.status(500).json({ message: error.message });
 		}
 	}),
 ];
@@ -223,9 +251,13 @@ export const deleteTopic = [
 	expressAsyncHandler(async (req: Request, res: Response) => {
 		try {
 			const user = req.user as IUser;
+			if (!user) {
+				res.status(401).json({ message: "User not logged in" });
+				return;
+			}
 
 			if (user?.userType !== "admin") {
-				res.status(401).json({ message: "Unauthorized" });
+				res.status(403).json({ message: "Unauthorized" });
 				return;
 			}
 
@@ -236,7 +268,7 @@ export const deleteTopic = [
 				return;
 			}
 
-			res.status(201).json(topic);
+			res.status(200).json(topic);
 		} catch (error) {
 			res.status(500).json({ message: error.message });
 		}
@@ -249,12 +281,12 @@ export const deleteTopic = [
 export const getPopularTopics = expressAsyncHandler(
 	async (req: Request, res: Response) => {
 		try {
-			let limit = 10; // default limit
+			let limit = 10;
 			if (req.query.limit) {
 				limit = parseInt(req.query.limit as string);
 			}
 
-			let sortBy = "totalPosts"; // default sort
+			let sortBy = "totalPosts";
 			if (req.query.sortBy) {
 				sortBy = req.query.sortBy as string;
 			}
@@ -308,7 +340,12 @@ export const getPopularTopics = expressAsyncHandler(
 				},
 			]);
 
-			res.status(201).json(topics);
+			if (!topics) {
+				res.status(404).json({ message: "No topics found" });
+				return;
+			}
+
+			res.status(200).json(topics);
 		} catch (error) {
 			res.status(500).json({ message: error.message });
 		}

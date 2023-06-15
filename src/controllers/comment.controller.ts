@@ -24,7 +24,7 @@ export const getComments = expressAsyncHandler(
 			}
 
 			const comments = await commentsQuery.exec();
-			res.status(201).json(comments);
+			res.status(200).json(comments);
 		} catch (error) {
 			res.status(500).json({ message: error.message });
 		}
@@ -41,7 +41,7 @@ export const getCommentById = expressAsyncHandler(
 				"author",
 				"firstName lastName",
 			);
-			res.status(201).json(comment);
+			res.status(200).json(comment);
 		} catch (error) {
 			res.status(500).json({ message: error.message });
 		}
@@ -68,7 +68,7 @@ export const createComment = [
 		const user = req.user as IUser;
 
 		if (!user) {
-			res.status(401).json({ message: "Unauthorized" });
+			res.status(401).json({ message: "No user logged in" });
 			return;
 		}
 
@@ -99,12 +99,12 @@ export const createComment = [
 			await session.commitTransaction();
 			session.endSession();
 
-			res.status(201).status(201).json(newComment);
+			res.status(201).json(newComment);
 		} catch (error) {
 			await session.abortTransaction();
 			session.endSession();
 
-			res.status(400).json({ message: error.message });
+			res.status(500).json({ message: error.message });
 		}
 	}),
 ];
@@ -129,7 +129,7 @@ export const updateComment = [
 
 		const user = req.user as IUser;
 		if (!user) {
-			res.status(401).json({ message: "Unauthorized" });
+			res.status(401).json({ message: "No user logged in" });
 			return;
 		}
 
@@ -142,16 +142,20 @@ export const updateComment = [
 			}
 
 			if (comment.author.toString() !== user._id.toString()) {
-				res.status(403).json({ message: "Not authorized" });
+				res
+					.status(403)
+					.json({
+						message: "You must be the original commenter to edit a comment",
+					});
 				return;
 			}
 
 			comment.content = req.body.content;
 			await comment.save();
 
-			res.status(200).json(comment);
+			res.status(201).json(comment);
 		} catch (error) {
-			res.status(400).json({ message: error.message });
+			res.status(500).json({ message: error.message });
 		}
 	}),
 ];
@@ -165,7 +169,7 @@ export const deleteComment = [
 		const user = req.user as IUser;
 
 		if (!user) {
-			res.status(401).json({ message: "Unauthorized" });
+			res.status(401).json({ message: "No user logged in" });
 			return;
 		}
 
@@ -201,7 +205,7 @@ export const getCommentsByPostId = expressAsyncHandler(
 				post: req.params.id,
 			}).populate("author", "firstName lastName");
 
-			res.status(201).json(comments);
+			res.status(200).json(comments);
 		} catch (error) {
 			res.status(500).json({ message: error.message });
 		}

@@ -157,7 +157,9 @@ export const getCurrentUser = expressAsyncHandler(
 	async (req: Request, res: Response) => {
 		const token = req.cookies.jwt;
 		if (!token) {
-			res.status(200).json({ isAuthenticated: false });
+			res
+				.status(200)
+				.json({ isAuthenticated: false, message: "No user logged in" });
 			return;
 		}
 
@@ -170,13 +172,17 @@ export const getCurrentUser = expressAsyncHandler(
 
 			const user = await User.findById(userId, { password: 0 });
 			if (!user) {
-				res.status(404).json({ isAuthenticated: false });
+				res
+					.status(404)
+					.json({ isAuthenticated: false, message: "User not found" });
 				return;
 			}
 
 			res.status(200).json({ user, isAuthenticated: true });
 		} catch (err) {
-			res.status(401).json({ isAuthenticated: false });
+			res
+				.status(401)
+				.json({ isAuthenticated: false, message: "Invalid token" });
 		}
 	},
 );

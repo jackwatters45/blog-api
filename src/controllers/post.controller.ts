@@ -4,7 +4,7 @@ import Post from "../models/post.model";
 import { IUser } from "../models/user.model";
 import expressAsyncHandler from "express-async-handler";
 import passport from "passport";
-import { calculateStartTime } from "./utils";
+import { calculateStartTime } from "../utils/calculateStartTime";
 
 // @desc    Get all posts
 // @route   GET /posts
@@ -29,7 +29,7 @@ export const getPosts = expressAsyncHandler(
 			const total = await Post.countDocuments({ published: true });
 
 			const posts = await postsQuery.exec();
-			res.json({ posts, meta: { total } });
+			res.status(200).json({ posts, meta: { total } });
 		} catch (error) {
 			res.status(500).json({ message: error.message });
 		}
@@ -46,8 +46,12 @@ export const getPostsPreview = [
 			const total = await Post.countDocuments();
 
 			const user = req.user as IUser;
+			if (!user) {
+				res.status(401).json({ message: "No user logged in" });
+				return;
+			}
 			if (user.userType !== "admin") {
-				res.status(401).json({ message: "Unauthorized" });
+				res.status(403).json({ message: "Unauthorized" });
 				return;
 			}
 
@@ -59,7 +63,7 @@ export const getPostsPreview = [
 				.populate("topic", "name")
 				.sort({ createdAt: -1 });
 
-			res.json({ posts, meta: { total } });
+			res.status(200).json({ posts, meta: { total } });
 		} catch (error) {
 			res.status(500).json({ message: error.message });
 		}
@@ -84,7 +88,7 @@ export const getPostById = expressAsyncHandler(
 					populate: { path: "author", select: "firstName lastName isDeleted" },
 				});
 
-			res.json(post);
+			res.status(200).json(post);
 		} catch (error) {
 			res.status(500).json({ message: error.message });
 		}
@@ -120,7 +124,7 @@ export const createPost = [
 
 		const author = req.user as IUser;
 		if (!author) {
-			res.status(400).json({ message: "Author is required" });
+			res.status(401).json({ message: "Author is required" });
 			return;
 		}
 
@@ -172,15 +176,22 @@ export const updatePost = [
 		}
 		const { title, content, topic, published } = req.body;
 		try {
+			const user = req.user as IUser;
+			if (!user) {
+				res.status(401).json({ message: "No user logged in" });
+				return;
+			}
+
 			const post = await Post.findById(req.params.id);
 			if (!post) {
 				res.status(404).json({ message: "Post not found" });
 				return;
 			}
 
-			const user = req.user as IUser;
 			if (post.author.toString() !== user.id && user.userType !== "admin") {
-				res.status(403).json({ message: "Unauthorized" });
+				res.status(403).json({
+					message: "Only admin and the original author can update post",
+				});
 				return;
 			}
 
@@ -190,7 +201,7 @@ export const updatePost = [
 			post.published = published;
 
 			const updatedPost = await post.save();
-			res.json(updatedPost);
+			res.status(201).json(updatedPost);
 		} catch (error) {
 			res.status(500).json({ message: error.message });
 		}
@@ -205,6 +216,11 @@ export const deletePost = [
 	expressAsyncHandler(async (req: Request, res: Response) => {
 		try {
 			const user = req.user as IUser;
+			if (!user) {
+				res.status(401).json({ message: "No user logged in" });
+				return;
+			}
+
 			const post = await Post.findById(req.params.id);
 			if (!post) {
 				res.status(404).json({ message: "Post not found" });
@@ -223,7 +239,7 @@ export const deletePost = [
 				return;
 			}
 
-			res.json(result);
+			res.status(200).json(result);
 		} catch (error) {
 			res.status(500).json({ message: error.message });
 		}
@@ -238,7 +254,7 @@ export const likePost = [
 	expressAsyncHandler(async (req: Request, res: Response) => {
 		const user = req.user as IUser;
 		if (!user) {
-			res.status(401).json({ message: "Unauthorized" });
+			res.status(401).json({ message: "No user logged in" });
 			return;
 		}
 
@@ -261,7 +277,7 @@ export const likePost = [
 			post.likes.push({ userId: user._id, date: new Date() });
 			const updatedPost = await post.save();
 
-			res.json(updatedPost);
+			res.status(201).json(updatedPost);
 		} catch (error) {
 			res.status(500).json({ message: error.message });
 		}
@@ -276,7 +292,7 @@ export const unlikePost = [
 	expressAsyncHandler(async (req: Request, res: Response) => {
 		const user = req.user as IUser;
 		if (!user) {
-			res.status(401).json({ message: "Unauthorized" });
+			res.status(401).json({ message: "No user logged in" });
 			return;
 		}
 
@@ -301,7 +317,7 @@ export const unlikePost = [
 			);
 			const updatedPost = await post.save();
 
-			res.json(updatedPost);
+			res.status(201).json(updatedPost);
 		} catch (error) {
 			res.status(500).json({ message: error.message });
 		}
@@ -320,7 +336,7 @@ export const getLikes = expressAsyncHandler(
 				return;
 			}
 
-			res.json(post.likes.length);
+			res.status(200).json(post.likes.length);
 		} catch (error) {
 			res.status(500).json({ message: error.message });
 		}
@@ -336,7 +352,7 @@ export const searchPosts = expressAsyncHandler(
 			const posts = await Post.find({
 				$text: { $search: req.query.q as string },
 			});
-			res.json(posts);
+			res.status(200).json(posts);
 		} catch (error) {
 			res.status(500).json({ message: error.message });
 		}
@@ -424,7 +440,7 @@ export const getPopularPosts = expressAsyncHandler(
 
 			const posts = await postsQuery.exec();
 
-			res.json({ posts, meta: { total } }).status(201);
+			res.status(200).json({ posts, meta: { total } });
 		} catch (error) {
 			res.status(500).json({ message: error.message });
 		}
@@ -439,7 +455,7 @@ export const getFollowingPosts = [
 	expressAsyncHandler(async (req: Request, res: Response) => {
 		const user = req.user as IUser;
 		if (!user) {
-			res.status(401).json({ message: "Unauthorized" });
+			res.status(401).json({ message: "No user logged in" });
 			return;
 		}
 
@@ -472,7 +488,7 @@ export const getFollowingPosts = [
 				return;
 			}
 
-			res.json({ posts, meta: { total } });
+			res.status(200).json({ posts, meta: { total } });
 		} catch (error) {
 			console.error(error);
 			res.status(500).json({ message: "Server Error" });

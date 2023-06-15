@@ -7,7 +7,7 @@ import Comment from "../models/comment.model";
 import passport from "passport";
 import bcrypt from "bcryptjs";
 import { startSession } from "mongoose";
-import { calculateStartTime } from "./utils";
+import { calculateStartTime } from "../utils/calculateStartTime";
 import { v4 as uuid } from "uuid";
 import multer from "multer";
 import { v2 as cloudinary } from "cloudinary";
@@ -30,7 +30,8 @@ export const getUsers = expressAsyncHandler(
 			}
 
 			const users = await usersQuery.exec();
-			res.json(users);
+
+			res.status(200).json(users);
 		} catch (error) {
 			res.status(500).json({ message: error.message });
 		}
@@ -44,8 +45,13 @@ export const getUsersPreviewData = [
 	passport.authenticate("jwt", { session: false }),
 	expressAsyncHandler(async (req: Request, res: Response) => {
 		const user = req.user as IUser;
+		if (!user) {
+			res.status(401).json({ message: "User not logged in" });
+			return;
+		}
+
 		if (user.userType !== "admin") {
-			res.status(401).json({ message: "Unauthorized" });
+			res.status(403).json({ message: "Unauthorized" });
 			return;
 		}
 
@@ -80,7 +86,7 @@ export const getUsersPreviewData = [
 
 			const users = await usersQuery.exec();
 
-			res.json({ users, meta: { totalUsers: total } });
+			res.status(200).json({ users, meta: { totalUsers: total } });
 		} catch (error) {
 			res.status(500).json({ message: error.message });
 		}
@@ -120,7 +126,7 @@ export const getUserById = expressAsyncHandler(
 				return;
 			}
 
-			res.json({ user, posts, comments });
+			res.status(200).json({ user, posts, comments });
 		} catch (error) {
 			res.status(500).json({ message: error.message });
 		}
@@ -134,9 +140,13 @@ export const getDeletedUserById = [
 	passport.authenticate("jwt", { session: false }),
 	expressAsyncHandler(async (req: Request, res: Response) => {
 		const user = req.user as IUser;
+		if (!user) {
+			res.status(401).json({ message: "User not logged in" });
+			return;
+		}
 
 		if (user.userType !== "admin") {
-			res.status(401).json({ message: "Unauthorized" });
+			res.status(403).json({ message: "Unauthorized" });
 			return;
 		}
 
@@ -167,7 +177,7 @@ export const getDeletedUserById = [
 				}),
 			]);
 
-			res.json({ user, posts, comments });
+			res.status(200).json({ user, posts, comments });
 		} catch (error) {
 			res.status(500).json({ message: error.message });
 		}
@@ -216,8 +226,13 @@ export const createUser = [
 		}
 
 		const reqUser = req.user as IUser;
+		if (!reqUser) {
+			res.status(401).json({ message: "User not logged in" });
+			return;
+		}
+
 		if (reqUser.userType !== "admin") {
-			res.status(401).json({ message: "Unauthorized" });
+			res.status(403).json({ message: "Unauthorized" });
 			return;
 		}
 
@@ -279,11 +294,16 @@ export const updateUserPassword = [
 		}
 
 		const reqUser = req.user as IUser;
+		if (!reqUser) {
+			res.status(401).json({ message: "User not logged in" });
+			return;
+		}
+
 		if (
 			reqUser.userType !== "admin" &&
 			reqUser._id.toString() !== req.params.id
 		) {
-			res.status(401).json({ message: "Unauthorized" });
+			res.status(403).json({ message: "Unauthorized" });
 			return;
 		}
 
@@ -304,7 +324,7 @@ export const updateUserPassword = [
 				return;
 			}
 
-			res.status(200).json({ message: "Password updated successfully" });
+			res.status(201).json({ message: "Password updated successfully" });
 		} catch (error) {
 			res.status(500).json({ message: error.message });
 		}
@@ -340,9 +360,13 @@ export const updateUser = [
 		}
 
 		const reqUser = req.user as IUser;
+		if (!reqUser) {
+			res.status(401).json({ message: "No user logged in" });
+			return;
+		}
 		const userId = req.params.id;
 		if (String(reqUser._id) !== userId && reqUser.userType !== "admin") {
-			res.status(401).json({ message: "Unauthorized" });
+			res.status(403).json({ message: "Unauthorized" });
 			return;
 		}
 
@@ -377,7 +401,9 @@ export const updateUser = [
 				return;
 			}
 
-			res.json({ message: "User updated successfully" });
+			res
+				.status(201)
+				.json({ updatedUser, message: "User updated successfully" });
 		} catch (error) {
 			console.log(error);
 			res.status(500).json({ message: error.message });
@@ -394,8 +420,13 @@ export const deleteUser = [
 		const user = req.user as IUser;
 		const userId = req.params.id;
 
+		if (!user) {
+			res.status(401).json({ message: "No user logged in" });
+			return;
+		}
+
 		if (String(user._id) !== userId && user.userType !== "admin") {
-			res.status(401).json({
+			res.status(403).json({
 				message:
 					"Unauthorized: user is not an admin or is trying to delete someone who they are not permitted to delete.",
 			});
@@ -446,16 +477,13 @@ export const deleteUser = [
 
 			await session.commitTransaction();
 
-			res.json({ userToDelete });
+			res.status(201).json({ userToDelete });
 		} catch (error) {
 			await session.abortTransaction();
 
-			if (error.message === "User not found") {
+			if (error.message === "User not found")
 				res.status(404).json({ message: error.message });
-			} else {
-				console.log(error);
-				res.status(500).json({ message: error.message });
-			}
+			else res.status(500).json({ message: error.message });
 		} finally {
 			session.endSession();
 		}
@@ -476,7 +504,7 @@ export const searchUsers = expressAsyncHandler(
 				{ password: 0, email: 0 },
 			);
 
-			res.json(users);
+			res.status(200).json(users);
 		} catch (error) {
 			res.status(500).json({ message: error.message });
 		}
@@ -508,7 +536,7 @@ export const getUserPosts = expressAsyncHandler(
 			}
 
 			const posts = await postsQuery.exec();
-			res.json({ posts, meta: { total } });
+			res.status(200).json({ posts, meta: { total } });
 		} catch (error) {
 			res.status(500).json({ message: error.message });
 		}
@@ -629,14 +657,12 @@ export const getPopularAuthors = expressAsyncHandler(
 
 			const users = await usersQuery.exec();
 
-			res
-				.json({
-					users,
-					meta: {
-						total: authorCount.length > 0 ? authorCount[0].totalAuthors : 0,
-					},
-				})
-				.status(201);
+			res.status(201).json({
+				users,
+				meta: {
+					total: authorCount.length > 0 ? authorCount[0].totalAuthors : 0,
+				},
+			});
 		} catch (error) {
 			res.status(500).json({ message: error.message });
 		}
@@ -652,12 +678,13 @@ export const getUserFollowing = expressAsyncHandler(
 			const user = await User.findById(req.params.id)
 				.populate("following", "username followers")
 				.select("following");
+
 			if (!user || user.isDeleted) {
 				res.status(404).json({ message: "User not found or has been deleted" });
 				return;
 			}
 
-			res.json({ following: user.following });
+			res.status(200).json({ following: user.following });
 		} catch (error) {
 			res.status(500).json({ message: error.message });
 		}
@@ -670,12 +697,9 @@ export const getUserFollowing = expressAsyncHandler(
 export const addFollower = [
 	passport.authenticate("jwt", { session: false }),
 	expressAsyncHandler(async (req: Request, res: Response) => {
-		const session = await startSession();
-		session.startTransaction();
-
 		const user = req.user as IUser;
-		if (!user || user.isDeleted) {
-			res.status(404).json({ message: "User not found" });
+		if (!user) {
+			res.status(401).json({ message: "No user logged in" });
 			return;
 		}
 
@@ -685,6 +709,8 @@ export const addFollower = [
 			return;
 		}
 
+		const session = await startSession();
+		session.startTransaction();
 		try {
 			const userFollowed = await User.findById(req.params.id);
 
@@ -707,16 +733,9 @@ export const addFollower = [
 				{ new: true, session },
 			);
 
-			if (!userFollowing || userFollowing.isDeleted) {
-				await session.abortTransaction();
-				session.endSession();
-				res.status(404).json({ message: "User not found" });
-				return;
-			}
-
 			await session.commitTransaction();
 			session.endSession();
-			res.json({ userFollowed, userFollowing });
+			res.status(201).json({ userFollowed, userFollowing });
 		} catch (error) {
 			await session.abortTransaction();
 			session.endSession();
@@ -731,12 +750,9 @@ export const addFollower = [
 export const removeFollower = [
 	passport.authenticate("jwt", { session: false }),
 	expressAsyncHandler(async (req: Request, res: Response) => {
-		const session = await startSession();
-		session.startTransaction();
-
 		const user = req.user as IUser;
-		if (!user || user.isDeleted) {
-			res.status(404).json({ message: "User not found" });
+		if (!user) {
+			res.status(401).json({ message: "No user logged in" });
 			return;
 		}
 
@@ -746,6 +762,8 @@ export const removeFollower = [
 			return;
 		}
 
+		const session = await startSession();
+		session.startTransaction();
 		try {
 			const userUnfollowed = await User.findById(req.params.id);
 
@@ -768,16 +786,9 @@ export const removeFollower = [
 				{ new: true, session },
 			);
 
-			if (!userUnfollowing || userUnfollowing.isDeleted) {
-				await session.abortTransaction();
-				session.endSession();
-				res.status(404).json({ message: "User not found" });
-				return;
-			}
-
 			await session.commitTransaction();
 			session.endSession();
-			res.json({ userUnfollowed, userUnfollowing });
+			res.status(201).json({ userUnfollowed, userUnfollowing });
 		} catch (error) {
 			await session.abortTransaction();
 			session.endSession();
