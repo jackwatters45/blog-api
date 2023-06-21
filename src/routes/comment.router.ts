@@ -1,27 +1,43 @@
 import express from "express";
 import {
 	createComment,
+	createCommentReply,
 	deleteComment,
+	dislikeComment,
 	getCommentById,
 	getComments,
+	getReplies,
+	likeComment,
 	updateComment,
 } from "../controllers/comment.controller";
 
-const router = express.Router();
+const router = express.Router({ mergeParams: true });
 
-// /comments
+// posts/:post/comments
 router.get("/", getComments);
 
-// /comments/:id
+// posts/:post/comments/:id
 router.get("/:id", getCommentById);
 
-// /comments
+// posts/:post/comments
 router.post("/", createComment);
 
-// /comments/:id
+// posts/:post/comments/:id
 router.put("/:id", updateComment);
 
-// /comments/:id
+// posts/:post/comments/:id
 router.delete("/:id", deleteComment);
+
+// posts/:post/comments/:id/like
+router.post("/:id/like", likeComment);
+
+// posts/:post/comments/:id/dislike
+router.post("/:id/dislike", dislikeComment);
+
+// posts/:post/comments/:id/reply
+router.post("/:id/reply", createCommentReply);
+
+// posts/:post/comments/:id/replies
+router.get("/:id/replies", getReplies);
 
 export default router;

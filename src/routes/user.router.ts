@@ -4,7 +4,6 @@ import {
 	deleteUser,
 	getUserById,
 	getUsers,
-	searchUsers,
 	updateUser,
 	getUserPosts,
 	getPopularAuthors,
@@ -14,18 +13,19 @@ import {
 	getDeletedUserById,
 	getUserFollowing,
 	updateUserPassword,
+	getSavedPosts,
 } from "../controllers/user.controller";
 
 const router = express.Router();
-
-// /users
-router.get("/search", searchUsers);
 
 // /users/popular
 router.get("/popular", getPopularAuthors);
 
 // /users/preview
 router.get("/preview", getUsersPreviewData);
+
+// /users/:id/saved-posts
+router.get("/:id/saved-posts", getSavedPosts);
 
 // /users/:id/follow
 router.put("/:id/follow", addFollower);

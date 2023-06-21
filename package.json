@@ -7,17 +7,14 @@
 		"node": ">=18.16.0"
 	},
 	"scripts": {
-		"build:assets": "ts-node src/tools/copyAssets",
-		"build:sass": "node-sass src/public/styles -o dist/public/styles",
-		"build": "rimraf dist && tsc -p src & npm run build:assets",
+		"build": "rimraf dist && tsc",
 		"start": "node dist/index.js",
 		"dev": "nodemon src/index.ts",
 		"serverstart": "DEBUG=express-members-only:* & npm run dev",
 		"lint:fix": "eslint . --fix",
 		"format": "prettier --write .",
 		"fix": "npm run format & npm run lint:fix",
-		"prepare": "husky install",
-		"populate": "ts-node src/tools/populateDatabase"
+		"prepare": "husky install"
 	},
 	"lint-staged": {
 		"*.ts": "npm run fix"
@@ -86,6 +83,7 @@
 		"http-errors": "~1.6.3",
 		"luxon": "^3.3.0",
 		"mongoose": "^7.1.0",
+		"mongoose-autopopulate": "^1.0.1",
 		"morgan": "~1.9.1",
 		"multer": "^1.4.5-lts.1",
 		"passport-jwt": "^4.0.1",

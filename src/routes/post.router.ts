@@ -9,11 +9,10 @@ import {
 	getPosts,
 	getPostsPreview,
 	likePost,
-	searchPosts,
+	toggleSavedPost,
 	unlikePost,
 	updatePost,
 } from "../controllers/post.controller";
-import { getCommentsByPostId } from "../controllers/comment.controller";
 
 const router = express.Router();
 
@@ -23,9 +22,6 @@ router.get("/", getPosts);
 // /posts/:id
 router.post("/", createPost);
 
-// /posts
-router.get("/search", searchPosts);
-
 // /posts/popular
 router.get("/popular", getPopularPosts);
 
@@ -34,6 +30,9 @@ router.get("/preview", getPostsPreview);
 
 // /posts/following
 router.get("/following", getFollowingPosts);
+
+// /users/saved-posts/:id
+router.put("/saved-posts/:id", toggleSavedPost);
 
 // /posts/:id
 router.get("/:id", getPostById);
@@ -52,8 +51,5 @@ router.put("/:id/like", likePost);
 
 // /posts/:id/unlike
 router.put("/:id/unlike", unlikePost);
-
-// /posts/:id/comments
-router.use("/:id/comments", getCommentsByPostId);
 
 export default router;

@@ -12,4 +12,6 @@ const topicSchema = new Schema<ITopic>(
 	{ timestamps: true },
 );
 
+topicSchema.index({ name: "text" });
+
 export default model<ITopic>("Topic", topicSchema);

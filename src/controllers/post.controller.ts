@@ -1,10 +1,11 @@
 import { body, validationResult } from "express-validator";
 import { Request, Response } from "express";
 import Post from "../models/post.model";
-import { IUser } from "../models/user.model";
+import User, { IUser } from "../models/user.model";
 import expressAsyncHandler from "express-async-handler";
 import passport from "passport";
 import { calculateStartTime } from "../utils/calculateStartTime";
+import { Types } from "mongoose";
 
 // @desc    Get all posts
 // @route   GET /posts
@@ -12,7 +13,9 @@ import { calculateStartTime } from "../utils/calculateStartTime";
 export const getPosts = expressAsyncHandler(
 	async (req: Request, res: Response) => {
 		try {
-			const postsQuery = Post.find({ published: true })
+			const match = { published: true };
+			const postsCount = await Post.countDocuments(match);
+			const postsQuery = Post.find(match)
 				.populate("author", "firstName lastName isDeleted")
 				.populate("topic", "name")
 				.sort({ createdAt: -1 });
@@ -26,10 +29,8 @@ export const getPosts = expressAsyncHandler(
 				postsQuery.limit(limit);
 			}
 
-			const total = await Post.countDocuments({ published: true });
-
 			const posts = await postsQuery.exec();
-			res.status(200).json({ posts, meta: { total } });
+			res.status(200).json({ posts, meta: { total: postsCount } });
 		} catch (error) {
 			res.status(500).json({ message: error.message });
 		}
@@ -43,8 +44,6 @@ export const getPostsPreview = [
 	passport.authenticate("jwt", { session: false }),
 	expressAsyncHandler(async (req: Request, res: Response) => {
 		try {
-			const total = await Post.countDocuments();
-
 			const user = req.user as IUser;
 			if (!user) {
 				res.status(401).json({ message: "No user logged in" });
@@ -55,6 +54,7 @@ export const getPostsPreview = [
 				return;
 			}
 
+			const postsCount = await Post.countDocuments({});
 			const posts = await Post.find(
 				{},
 				{ title: 1, updatedAt: 1, likes: 1, comments: 1 },
@@ -63,7 +63,7 @@ export const getPostsPreview = [
 				.populate("topic", "name")
 				.sort({ createdAt: -1 });
 
-			res.status(200).json({ posts, meta: { total } });
+			res.status(200).json({ posts, meta: { total: postsCount } });
 		} catch (error) {
 			res.status(500).json({ message: error.message });
 		}
@@ -85,7 +85,10 @@ export const getPostById = expressAsyncHandler(
 				.populate("topic", "name")
 				.populate({
 					path: "comments",
-					populate: { path: "author", select: "firstName lastName isDeleted" },
+					populate: {
+						path: "author",
+						select: "firstName lastName isDeleted avatarUrl",
+					},
 				});
 
 			res.status(200).json(post);
@@ -343,22 +346,6 @@ export const getLikes = expressAsyncHandler(
 	},
 );
 
-// @desc    Search posts
-// @route   GET /posts/search
-// @access  Public
-export const searchPosts = expressAsyncHandler(
-	async (req: Request, res: Response) => {
-		try {
-			const posts = await Post.find({
-				$text: { $search: req.query.q as string },
-			});
-			res.status(200).json(posts);
-		} catch (error) {
-			res.status(500).json({ message: error.message });
-		}
-	},
-);
-
 // @desc    Get popular posts
 // @route   GET /posts/popular
 // @access  Public
@@ -367,10 +354,7 @@ export const getPopularPosts = expressAsyncHandler(
 		try {
 			const start = calculateStartTime(req.query.timeRange as string);
 
-			const total = await Post.countDocuments({
-				published: true,
-			});
-
+			const postsCount = await Post.countDocuments({ published: true });
 			let postsQuery = Post.aggregate([
 				{
 					$match: {
@@ -440,8 +424,9 @@ export const getPopularPosts = expressAsyncHandler(
 
 			const posts = await postsQuery.exec();
 
-			res.status(200).json({ posts, meta: { total } });
+			res.status(200).json({ posts, meta: { total: postsCount } });
 		} catch (error) {
+			console.log(error);
 			res.status(500).json({ message: error.message });
 		}
 	},
@@ -460,14 +445,14 @@ export const getFollowingPosts = [
 		}
 
 		try {
-			const total = await Post.countDocuments({
+			const match = {
 				published: true,
 				author: { $in: user.following },
-			});
-			const postsQuery = Post.find({
-				published: true,
-				author: { $in: user.following },
-			})
+			};
+
+			const postsCount = await Post.countDocuments(match);
+
+			const postsQuery = Post.find(match)
 				.populate("author", "firstName lastName isDeleted")
 				.populate("topic", "name")
 				.sort({ createdAt: -1 });
@@ -488,10 +473,47 @@ export const getFollowingPosts = [
 				return;
 			}
 
-			res.status(200).json({ posts, meta: { total } });
+			res.status(200).json({ posts, meta: { total: postsCount } });
 		} catch (error) {
 			console.error(error);
 			res.status(500).json({ message: "Server Error" });
+		}
+	}),
+];
+
+// @desc    Toggle saved post
+// @route   PUT /users/:id/saved-posts/:id
+// @access  Private
+export const toggleSavedPost = [
+	passport.authenticate("jwt", { session: false }),
+	expressAsyncHandler(async (req: Request, res: Response) => {
+		const user = req.user as IUser;
+		if (!user) {
+			res.status(401).json({ message: "No user logged in" });
+			return;
+		}
+
+		try {
+			const userId = user._id;
+
+			// Check if post is currently saved
+			const postId = new Types.ObjectId(req.params.id);
+			const isPostSaved = user.savedPosts.includes(postId);
+
+			// If it is, remove it. Otherwise, add it.
+			const updateOperation = isPostSaved
+				? { $pull: { savedPosts: req.params.id } }
+				: { $addToSet: { savedPosts: req.params.id } };
+
+			const userUpdated = await User.findByIdAndUpdate(
+				userId,
+				updateOperation,
+				{ new: true },
+			);
+
+			res.status(200).json({ userUpdated });
+		} catch (error) {
+			res.status(500).json({ message: error.message });
 		}
 	}),
 ];

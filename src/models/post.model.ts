@@ -1,5 +1,7 @@
 import { Schema, model, Types, Document } from "mongoose";
 import { IUser } from "./user.model";
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+import autopopulate from "mongoose-autopopulate";
 
 export interface ILike {
 	userId: Types.ObjectId;
@@ -14,7 +16,6 @@ export interface IPost extends Document {
 	updatedAt: Date;
 	published: boolean;
 	topic?: Types.ObjectId;
-	tags?: string[];
 	likes: ILike[];
 	comments: Types.ObjectId[];
 }
@@ -26,14 +27,13 @@ const postSchema = new Schema<IPost>(
 		author: { type: Types.ObjectId, ref: "User", required: true },
 		published: { type: Boolean, required: true, default: false },
 		topic: { type: Types.ObjectId, ref: "Topic" },
-		tags: [{ type: String, trim: true }],
 		likes: [
 			{
 				userId: { type: Types.ObjectId, ref: "User" },
 				date: { type: Date, default: Date.now },
 			},
 		],
-		comments: [{ type: Types.ObjectId, ref: "Comment" }],
+		comments: [{ type: Types.ObjectId, ref: "Comment", autopopulate: true }],
 	},
 	{ timestamps: true },
 );

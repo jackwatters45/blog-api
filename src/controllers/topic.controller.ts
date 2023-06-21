@@ -75,17 +75,15 @@ export const getPostsByTopic = expressAsyncHandler(
 				return;
 			}
 
-			const total = await Post.countDocuments({
+			const match = {
 				topic: new Types.ObjectId(req.params.id),
 				published: true,
-			});
+			};
 
+			const postsCount = await Post.countDocuments(match);
 			let postsQuery = Post.aggregate([
 				{
-					$match: {
-						topic: new Types.ObjectId(req.params.id),
-						published: true,
-					},
+					$match: match,
 				},
 				{
 					$addFields: {
@@ -153,7 +151,7 @@ export const getPostsByTopic = expressAsyncHandler(
 				return;
 			}
 
-			res.status(200).json({ posts, topic, meta: { total } });
+			res.status(200).json({ posts, topic, meta: { total: postsCount } });
 		} catch (error) {
 			res.status(500).json({ message: error.message });
 		}

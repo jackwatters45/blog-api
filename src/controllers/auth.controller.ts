@@ -9,9 +9,7 @@ import uploadToCloudinary from "../utils/uploadToCloudinary";
 import resizeAvatar from "../utils/resizeImage";
 
 const handleUserLogin = (res: Response, user: IUser) => {
-	const payload = {
-		id: user._id,
-	};
+	const payload = { id: user._id };
 
 	const jwtSecret = process.env.JWT_SECRET;
 	if (!jwtSecret) throw new Error("JWT Secret not defined");

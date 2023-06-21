@@ -22,9 +22,10 @@ export interface IUser extends Document {
 	followers: Types.ObjectId[];
 	following: Types.ObjectId[];
 	isDeleted: boolean;
-	description?: string;
+	savedPosts: Types.ObjectId[];
+	description: string;
+	avatarUrl: string;
 	deletedData?: DeletedData;
-	avatarUrl?: string;
 }
 
 const UserSchema = new Schema<IUser>(
@@ -44,7 +45,9 @@ const UserSchema = new Schema<IUser>(
 		followers: [{ type: Types.ObjectId, ref: "User", default: [] }],
 		following: [{ type: Types.ObjectId, ref: "User", default: [] }],
 		isDeleted: { type: Boolean, default: false },
-		description: { type: String, trim: true },
+		description: { type: String, trim: true, default: "" },
+		avatarUrl: { type: String, trim: true, default: "" },
+		savedPosts: [{ type: Types.ObjectId, ref: "Post", default: [] }],
 		deletedData: {
 			deletedBy: { type: Types.ObjectId, ref: "User" },
 			deletedAt: { type: Date },
@@ -52,7 +55,6 @@ const UserSchema = new Schema<IUser>(
 			username: { type: String, trim: true },
 			followerCount: { type: Number },
 		},
-		avatarUrl: { type: String, trim: true },
 	},
 	{ timestamps: true },
 );

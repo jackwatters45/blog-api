@@ -56,8 +56,7 @@ export const getUsersPreviewData = [
 		}
 
 		try {
-			const total = await User.countDocuments();
-
+			const usersCount = await User.countDocuments();
 			const usersQuery = User.aggregate([
 				{
 					$project: {
@@ -86,7 +85,7 @@ export const getUsersPreviewData = [
 
 			const users = await usersQuery.exec();
 
-			res.status(200).json({ users, meta: { totalUsers: total } });
+			res.status(200).json({ users, meta: { total: usersCount } });
 		} catch (error) {
 			res.status(500).json({ message: error.message });
 		}
@@ -490,27 +489,6 @@ export const deleteUser = [
 	}),
 ];
 
-// @desc    Search users by specific field
-// @route   GET /users/search?field=value
-// @access  Public
-export const searchUsers = expressAsyncHandler(
-	async (req: Request, res: Response) => {
-		try {
-			const users = await User.find(
-				{
-					$text: { $search: req.query.q as string },
-					isDeleted: false,
-				},
-				{ password: 0, email: 0 },
-			);
-
-			res.status(200).json(users);
-		} catch (error) {
-			res.status(500).json({ message: error.message });
-		}
-	},
-);
-
 // @desc    Get user posts
 // @route   GET /users/:id/posts
 // @access  Public
@@ -523,7 +501,7 @@ export const getUserPosts = expressAsyncHandler(
 				return;
 			}
 
-			const total = await Post.countDocuments({ author: req.params.id });
+			const postCount = await Post.countDocuments({ author: req.params.id });
 			const postsQuery = Post.find({ author: req.params.id }).populate("topic");
 
 			if (req.query.offset) {
@@ -536,7 +514,7 @@ export const getUserPosts = expressAsyncHandler(
 			}
 
 			const posts = await postsQuery.exec();
-			res.status(200).json({ posts, meta: { total } });
+			res.status(200).json({ posts, meta: { total: postCount } });
 		} catch (error) {
 			res.status(500).json({ message: error.message });
 		}
@@ -555,30 +533,19 @@ export const getPopularAuthors = expressAsyncHandler(
 
 			const authorCount = await Post.aggregate([
 				{
-					$lookup: {
-						from: "users",
-						localField: "author",
-						foreignField: "_id",
-						as: "author",
-					},
-				},
-				{
-					$unwind: "$author",
-				},
-				{
 					$match: {
-						"author.isDeleted": false,
+						published: true,
 					},
 				},
 				{
 					$group: {
-						_id: "$author._id",
+						_id: "$author",
 					},
 				},
 				{
-					$count: "totalAuthors",
+					$count: "authorCount",
 				},
-			]);
+			]).exec();
 
 			let usersQuery = Post.aggregate([
 				{
@@ -657,12 +624,7 @@ export const getPopularAuthors = expressAsyncHandler(
 
 			const users = await usersQuery.exec();
 
-			res.status(201).json({
-				users,
-				meta: {
-					total: authorCount.length > 0 ? authorCount[0].totalAuthors : 0,
-				},
-			});
+			res.status(201).json({ users, meta: { total: authorCount } });
 		} catch (error) {
 			res.status(500).json({ message: error.message });
 		}
@@ -792,6 +754,52 @@ export const removeFollower = [
 		} catch (error) {
 			await session.abortTransaction();
 			session.endSession();
+			res.status(500).json({ message: error.message });
+		}
+	}),
+];
+
+// @desc    Get user saved posts
+// @route   GET /users/:id/saved-posts
+// @access  Private
+export const getSavedPosts = [
+	passport.authenticate("jwt", { session: false }),
+	expressAsyncHandler(async (req: Request, res: Response) => {
+		const user = req.user as IUser;
+		if (!user) {
+			res.status(401).json({ message: "No user logged in" });
+			return;
+		}
+
+		try {
+			const userSavedPosts = await User.findById(user._id)
+				.populate({
+					path: "savedPosts",
+					populate: [
+						{
+							path: "author",
+							select: "firstName lastName isDeleted",
+						},
+						{
+							path: "topic",
+							select: "name",
+						},
+					],
+				})
+				.select("savedPosts");
+
+			if (!userSavedPosts) {
+				res.status(404).json({ message: "User not found" });
+				return;
+			}
+
+			const savedPostsCount = userSavedPosts.savedPosts.length;
+
+			res.status(200).json({
+				savedPosts: userSavedPosts?.savedPosts,
+				savedPostsCount,
+			});
+		} catch (error) {
 			res.status(500).json({ message: error.message });
 		}
 	}),

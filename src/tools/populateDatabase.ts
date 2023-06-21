@@ -44,7 +44,6 @@ const samplePosts: Partial<IPost>[] = [
 	{
 		title: "Sample Post 1",
 		content: "This is a sample post.",
-		tags: ["sample", "post"],
 	},
 	{
 		title: "Sample Post 2",
@@ -53,12 +52,10 @@ const samplePosts: Partial<IPost>[] = [
 	{
 		title: "Sample Post 3",
 		content: "This is a third sample post.",
-		tags: ["sample"],
 	},
 	{
 		title: "Sample Post 4",
 		content: "This is a fourth sample post.",
-		tags: ["post"],
 	},
 ];
 
