@@ -19,7 +19,8 @@ const configProdMiddleware = (app: Application) => {
 	// Set up rate limiter: maximum of twenty requests per minute
 	const limiter = RateLimit({
 		windowMs: 1 * 60 * 1000, // 1 minute
-		max: 20,
+		max: 30,
+		message: "Too many requests, please try again later.",
 	});
 	// Apply rate limiter to all requests
 	app.use(limiter);

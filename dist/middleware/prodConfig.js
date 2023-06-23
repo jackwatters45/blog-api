@@ -16,7 +16,8 @@ const configProdMiddleware = (app) => {
     }));
     const limiter = (0, express_rate_limit_1.default)({
         windowMs: 1 * 60 * 1000,
-        max: 20,
+        max: 30,
+        message: "Too many requests, please try again later.",
     });
     app.use(limiter);
 };

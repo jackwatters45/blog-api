@@ -13,7 +13,7 @@ const configOtherMiddleware = (app) => {
     app.use(express_1.default.urlencoded({ extended: false }));
     app.use((0, cookie_parser_1.default)(process.env.SESSION_SECRET));
     app.use((0, cors_1.default)({
-        origin: true,
+        origin: "http://blog-api-frontend-self.vercel.app",
         credentials: true,
     }));
 };

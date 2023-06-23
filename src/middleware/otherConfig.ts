@@ -10,7 +10,7 @@ const configOtherMiddleware = (app: Application) => {
 	app.use(cookieParser(process.env.SESSION_SECRET as string));
 	app.use(
 		cors({
-			origin: true,
+			origin: "http://blog-api-frontend-self.vercel.app",
 			credentials: true,
 		}),
 	);
