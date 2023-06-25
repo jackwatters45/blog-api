@@ -86,9 +86,19 @@ exports.createPost = [
         .withMessage("Title must be at least 5 and less than 100 characters long"),
     (0, express_validator_1.body)("content")
         .trim()
-        .isLength({ min: 250, max: 10000 })
-        .withMessage("Title must be at least 250 and less than 10000 characters long"),
-    (0, express_validator_1.body)("topic").isMongoId().withMessage("Topic must be an ObjectId"),
+        .custom((value, { req }) => {
+        if (req.body.published === true &&
+            (value.length < 250 || value.length > 10000)) {
+            throw new Error("Content must be at least 250 and less than 10000 characters long");
+        }
+        return true;
+    }),
+    (0, express_validator_1.body)("topic").custom((value, { req }) => {
+        if (req.body.published === true && !value.match(/^[0-9a-fA-F]{24}$/)) {
+            throw new Error("Topic must be an ObjectId when the post is published");
+        }
+        return true;
+    }),
     (0, express_validator_1.body)("published")
         .notEmpty()
         .isBoolean()
@@ -129,11 +139,20 @@ exports.updatePost = [
         .isLength({ min: 5, max: 100 })
         .withMessage("Title must be at least 5 and less than 100 characters long"),
     (0, express_validator_1.body)("content")
-        .optional()
         .trim()
-        .isLength({ min: 250, max: 10000 })
-        .withMessage("Content must be at least 250 and less than 10000 characters long"),
-    (0, express_validator_1.body)("topic").optional().isMongoId().withMessage("Topic must be an ObjectId"),
+        .custom((value, { req }) => {
+        if (req.body.published === true &&
+            (value.length < 250 || value.length > 10000)) {
+            throw new Error("Content must be at least 250 and less than 10000 characters long");
+        }
+        return true;
+    }),
+    (0, express_validator_1.body)("topic").custom((value, { req }) => {
+        if (req.body.published === true && !value.match(/^[0-9a-fA-F]{24}$/)) {
+            throw new Error("Topic must be an ObjectId when the post is published");
+        }
+        return true;
+    }),
     (0, express_validator_1.body)("published")
         .optional()
         .isBoolean()

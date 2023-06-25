@@ -109,11 +109,23 @@ export const createPost = [
 		.withMessage("Title must be at least 5 and less than 100 characters long"),
 	body("content")
 		.trim()
-		.isLength({ min: 250, max: 10000 })
-		.withMessage(
-			"Title must be at least 250 and less than 10000 characters long",
-		),
-	body("topic").isMongoId().withMessage("Topic must be an ObjectId"),
+		.custom((value, { req }) => {
+			if (
+				req.body.published === true &&
+				(value.length < 250 || value.length > 10000)
+			) {
+				throw new Error(
+					"Content must be at least 250 and less than 10000 characters long",
+				);
+			}
+			return true;
+		}),
+	body("topic").custom((value, { req }) => {
+		if (req.body.published === true && !value.match(/^[0-9a-fA-F]{24}$/)) {
+			throw new Error("Topic must be an ObjectId when the post is published");
+		}
+		return true;
+	}),
 	body("published")
 		.notEmpty()
 		.isBoolean()
@@ -160,13 +172,24 @@ export const updatePost = [
 		.isLength({ min: 5, max: 100 })
 		.withMessage("Title must be at least 5 and less than 100 characters long"),
 	body("content")
-		.optional()
 		.trim()
-		.isLength({ min: 250, max: 10000 })
-		.withMessage(
-			"Content must be at least 250 and less than 10000 characters long",
-		),
-	body("topic").optional().isMongoId().withMessage("Topic must be an ObjectId"),
+		.custom((value, { req }) => {
+			if (
+				req.body.published === true &&
+				(value.length < 250 || value.length > 10000)
+			) {
+				throw new Error(
+					"Content must be at least 250 and less than 10000 characters long",
+				);
+			}
+			return true;
+		}),
+	body("topic").custom((value, { req }) => {
+		if (req.body.published === true && !value.match(/^[0-9a-fA-F]{24}$/)) {
+			throw new Error("Topic must be an ObjectId when the post is published");
+		}
+		return true;
+	}),
 	body("published")
 		.optional()
 		.isBoolean()

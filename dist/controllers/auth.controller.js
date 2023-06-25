@@ -29,7 +29,6 @@ const handleUserLogin = (res, user) => {
     res.status(200).json({
         message: "Logged in successfully.",
         user,
-        token,
     });
 };
 exports.postSignUp = [
