@@ -28,7 +28,6 @@ const handleUserLogin = (res: Response, user: IUser) => {
 	res.status(200).json({
 		message: "Logged in successfully.",
 		user,
-		token,
 	});
 };
 
