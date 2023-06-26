@@ -10,7 +10,7 @@ export interface ILike {
 export interface IPost extends Document {
 	_id: Types.ObjectId;
 	title: string;
-	content: string;
+	content?: string;
 	author: Types.ObjectId | IUser;
 	createdAt: Date;
 	updatedAt: Date;
@@ -23,7 +23,7 @@ export interface IPost extends Document {
 const postSchema = new Schema<IPost>(
 	{
 		title: { type: String, required: true, trim: true, maxlength: 100 },
-		content: { type: String, required: true, trim: true, minlength: 500 },
+		content: { type: String, trim: true, maxlength: 10000 },
 		author: { type: Types.ObjectId, ref: "User", required: true },
 		published: { type: Boolean, required: true, default: false },
 		topic: { type: Types.ObjectId, ref: "Topic" },
@@ -57,7 +57,7 @@ postSchema.index({
 	title: "text",
 	content: "text",
 	author: "text",
-	tags: "text",
+	topic: "text",
 });
 
 export default model<IPost>("Post", postSchema);

@@ -87,14 +87,17 @@ exports.createPost = [
     (0, express_validator_1.body)("content")
         .trim()
         .custom((value, { req }) => {
-        if (req.body.published === true &&
+        if (value &&
+            req.body.published === true &&
             (value.length < 250 || value.length > 10000)) {
             throw new Error("Content must be at least 250 and less than 10000 characters long");
         }
         return true;
     }),
     (0, express_validator_1.body)("topic").custom((value, { req }) => {
-        if (req.body.published === true && !value.match(/^[0-9a-fA-F]{24}$/)) {
+        if (value &&
+            req.body.published === true &&
+            !value.match(/^[0-9a-fA-F]{24}$/)) {
             throw new Error("Topic must be an ObjectId when the post is published");
         }
         return true;
@@ -115,19 +118,23 @@ exports.createPost = [
             return;
         }
         const { title, content, topic, published } = req.body;
+        const post = new post_model_1.default({
+            title,
+            author: author._id,
+            published,
+        });
+        if (content) {
+            post.content = content;
+        }
+        if (topic) {
+            post.topic = topic;
+        }
         try {
-            const post = new post_model_1.default({
-                title,
-                content,
-                topic,
-                author,
-                published,
-            });
             await post.save();
             res.status(201).json(post);
         }
         catch (error) {
-            res.status(500).json({ message: error.message });
+            res.status(500).json({ message: error.message, post });
         }
     }),
 ];
@@ -141,14 +148,17 @@ exports.updatePost = [
     (0, express_validator_1.body)("content")
         .trim()
         .custom((value, { req }) => {
-        if (req.body.published === true &&
+        if (value &&
+            req.body.published === true &&
             (value.length < 250 || value.length > 10000)) {
             throw new Error("Content must be at least 250 and less than 10000 characters long");
         }
         return true;
     }),
     (0, express_validator_1.body)("topic").custom((value, { req }) => {
-        if (req.body.published === true && !value.match(/^[0-9a-fA-F]{24}$/)) {
+        if (value &&
+            req.body.published === true &&
+            !value.match(/^[0-9a-fA-F]{24}$/)) {
             throw new Error("Topic must be an ObjectId when the post is published");
         }
         return true;
@@ -182,9 +192,13 @@ exports.updatePost = [
                 return;
             }
             post.title = title;
-            post.content = content;
-            post.topic = topic;
             post.published = published;
+            if (content) {
+                post.content = content;
+            }
+            if (topic) {
+                post.topic = topic;
+            }
             const updatedPost = await post.save();
             res.status(201).json(updatedPost);
         }

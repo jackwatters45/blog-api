@@ -111,6 +111,7 @@ export const createPost = [
 		.trim()
 		.custom((value, { req }) => {
 			if (
+				value &&
 				req.body.published === true &&
 				(value.length < 250 || value.length > 10000)
 			) {
@@ -121,7 +122,11 @@ export const createPost = [
 			return true;
 		}),
 	body("topic").custom((value, { req }) => {
-		if (req.body.published === true && !value.match(/^[0-9a-fA-F]{24}$/)) {
+		if (
+			value &&
+			req.body.published === true &&
+			!value.match(/^[0-9a-fA-F]{24}$/)
+		) {
 			throw new Error("Topic must be an ObjectId when the post is published");
 		}
 		return true;
@@ -145,18 +150,25 @@ export const createPost = [
 
 		const { title, content, topic, published } = req.body;
 
+		const post = new Post({
+			title,
+			author: author._id,
+			published,
+		});
+
+		if (content) {
+			post.content = content;
+		}
+
+		if (topic) {
+			post.topic = topic;
+		}
+
 		try {
-			const post = new Post({
-				title,
-				content,
-				topic,
-				author,
-				published,
-			});
 			await post.save();
 			res.status(201).json(post);
 		} catch (error) {
-			res.status(500).json({ message: error.message });
+			res.status(500).json({ message: error.message, post });
 		}
 	}),
 ];
@@ -175,6 +187,7 @@ export const updatePost = [
 		.trim()
 		.custom((value, { req }) => {
 			if (
+				value &&
 				req.body.published === true &&
 				(value.length < 250 || value.length > 10000)
 			) {
@@ -185,7 +198,11 @@ export const updatePost = [
 			return true;
 		}),
 	body("topic").custom((value, { req }) => {
-		if (req.body.published === true && !value.match(/^[0-9a-fA-F]{24}$/)) {
+		if (
+			value &&
+			req.body.published === true &&
+			!value.match(/^[0-9a-fA-F]{24}$/)
+		) {
 			throw new Error("Topic must be an ObjectId when the post is published");
 		}
 		return true;
@@ -222,9 +239,15 @@ export const updatePost = [
 			}
 
 			post.title = title;
-			post.content = content;
-			post.topic = topic;
 			post.published = published;
+
+			if (content) {
+				post.content = content;
+			}
+
+			if (topic) {
+				post.topic = topic;
+			}
 
 			const updatedPost = await post.save();
 			res.status(201).json(updatedPost);

@@ -3,7 +3,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const mongoose_1 = require("mongoose");
 const postSchema = new mongoose_1.Schema({
     title: { type: String, required: true, trim: true, maxlength: 100 },
-    content: { type: String, required: true, trim: true, minlength: 500 },
+    content: { type: String, trim: true, maxlength: 10000 },
     author: { type: mongoose_1.Types.ObjectId, ref: "User", required: true },
     published: { type: Boolean, required: true, default: false },
     topic: { type: mongoose_1.Types.ObjectId, ref: "Topic" },
@@ -30,7 +30,7 @@ postSchema.index({
     title: "text",
     content: "text",
     author: "text",
-    tags: "text",
+    topic: "text",
 });
 exports.default = (0, mongoose_1.model)("Post", postSchema);
 //# sourceMappingURL=post.model.js.map
