@@ -132,7 +132,7 @@ export const getUserById = expressAsyncHandler(
 	},
 );
 
-// @desc    Get user by id
+// @desc    Get deleted user by id
 // @route   GET /users/:id/deleted
 // @access  Admin
 export const getDeletedUserById = [
