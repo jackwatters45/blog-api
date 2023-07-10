@@ -259,12 +259,8 @@ export const createUser = [
 				avatarUrl,
 			});
 
-			const result = await user.save();
-			if (!result) {
-				res.status(500).json("Could not save user");
-				return;
-			}
-
+			await user.save();
+			
 			res.status(201).json(user);
 		} catch (error) {
 			res.status(500).json({ message: error.message });
