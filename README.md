@@ -15,6 +15,8 @@ This is the API for a blog project with the objective of learning how to create 
 ```zsh
 git clone https://github.com/jackwatters45/blog-api.git
 
+npm install
+
 npm run serverstart
 ```
 
