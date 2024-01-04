@@ -10,7 +10,7 @@ const configOtherMiddleware = (app: Application) => {
 	app.use(cookieParser(process.env.SESSION_SECRET as string));
 	app.use(
 		cors({
-			origin: ["http://blog-api-frontend.jackwatters.dev"],
+			origin: ["https://blog-api-frontend.jackwatters.dev"],
 			credentials: true,
 		}),
 	);
